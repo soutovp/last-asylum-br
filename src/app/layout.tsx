@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://lapbr.netlify.app"),
+  metadataBase: new URL("https://lastasylumbr.com.br"),
   title: "Last Asylum BR - Guias, Calculadoras e Novidades",
   description: "Comunidade brasileira de Last Asylum. Guias de sobrevivência, calculadoras de recursos, patch notes e atualizações oficiais.",
   icons: {
