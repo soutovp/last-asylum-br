@@ -82,11 +82,11 @@ export default function FloatingNavbar() {
   ];
 
   return (
-    <nav className="w-full max-w-3xl mx-auto px-4 relative z-30">
-      {/* BARRA FLUTUANTE CENTRALIZADA COM BORDAS ARREDONDADAS */}
-      <div className="flex items-center justify-between md:justify-center gap-4 sm:gap-6 p-2 sm:p-2.5 rounded-full bg-[#101623]/90 border border-[#00ff88]/30 shadow-[0_15px_40px_rgba(0,0,0,0.8)] backdrop-blur-xl transition-all duration-300">
+    <nav className="w-full max-w-4xl mx-auto px-4 relative z-30">
+      {/* BARRA FLUTUANTE CENTRALIZADA COM BORDAS ARREDONDADAS - LARGURA OTIMIZADA */}
+      <div className="flex items-center justify-between md:justify-center gap-3 sm:gap-6 p-2 sm:p-2.5 rounded-full bg-[#101623]/90 border border-[#00ff88]/30 shadow-[0_15px_40px_rgba(0,0,0,0.8)] backdrop-blur-xl transition-all duration-300">
         {/* NAV LINKS DESKTOP CENTRALIZADOS */}
-        <div className="hidden md:flex items-center gap-1 sm:gap-1.5">
+        <div className="hidden md:flex items-center gap-0.5 sm:gap-1.5">
           {navItems.map((item) => {
             const isActive =
               item.href === "/"
@@ -98,7 +98,7 @@ export default function FloatingNavbar() {
               <Link
                 key={item.id}
                 href={item.href}
-                className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-full transition-all duration-200 ${
+                className={`flex items-center gap-1.5 px-2.5 sm:px-4 py-2 text-xs sm:text-sm font-semibold rounded-full transition-all duration-200 ${
                   isActive
                     ? "bg-[#00ff88] text-slate-950 shadow-[0_0_15px_rgba(0,255,136,0.4)] transform scale-105"
                     : "text-slate-300 hover:text-[#00ff88] hover:bg-slate-800/60"

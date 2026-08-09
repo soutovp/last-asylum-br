@@ -99,8 +99,8 @@ export default function Header() {
             />
           </Link>
 
-          {/* DESKTOP NAVIGATION LINKS COM ÍCONES VETORIZADOS */}
-          <nav className="hidden md:flex items-center gap-1.5 bg-slate-900/80 p-1.5 rounded-full border border-slate-800">
+          {/* DESKTOP NAVIGATION LINKS COM ÍCONES VETORIZADOS - RESPONSIVO E DINÂMICO */}
+          <nav className="hidden md:flex items-center gap-1 xl:gap-1.5 bg-slate-900/80 p-1.5 rounded-full border border-slate-800">
             {navLinks.map((link) => {
               const isActive =
                 link.href === "/"
@@ -112,7 +112,7 @@ export default function Header() {
                 <Link
                   key={link.id}
                   href={link.href}
-                  className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-full transition-all duration-200 ${
+                  className={`flex items-center gap-1.5 px-2.5 xl:px-4 py-2 text-xs xl:text-sm font-semibold rounded-full transition-all duration-200 ${
                     isActive
                       ? "text-slate-950 bg-[#00ff88] font-bold shadow-[0_0_15px_rgba(0,255,136,0.4)]"
                       : "text-slate-300 hover:text-[#00ff88] hover:bg-slate-800/60"

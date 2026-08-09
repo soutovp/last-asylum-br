@@ -17,6 +17,8 @@ export async function GET() {
     "/herois",
     "/guias",
     "/noticias",
+    "/codigos",
+    "/guias-visuais",
   ];
 
   // Inicia o XML com a tag de cabeçalho padrão e o namespace xmlns oficial exigido pelo Google

@@ -1,180 +1,66 @@
-"use client";
-
-import { useState, useEffect, Suspense } from "react";
+import { Metadata } from "next";
 import Image from "next/image";
 import Header from "@/components/Header";
-import { isSupabaseConfigured } from "@/lib/supabase";
+import CodigosContent from "@/components/CodigosContent";
 
-interface GiftCode {
-  id: string;
-  code: string;
-  rewards: string;
-  expires_at: string | null;
-  created_at: string; // Será usada como data de adição
-}
-
-function CodigosContent() {
-  const [codes, setCodes] = useState<GiftCode[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchCodes = async () => {
-      try {
-        if (isSupabaseConfigured) {
-          const { supabase } = await import("@/lib/supabase");
-          const { data, error } = await supabase
-            .from("gift_codes")
-            .select("*")
-            .order("created_at", { ascending: false });
-
-          if (data) {
-            setCodes(data);
-          }
-        }
-      } catch (err) {
-        console.error("Erro ao buscar códigos:", err);
-      } finally {
-        setLoading(false);
+export const metadata: Metadata = {
+  title: "Códigos de Resgate Ativos (Gift Codes) - Last Asylum BR",
+  description: "Lista de todos os códigos de presente (Gift Codes) ativos de Last Asylum Plague. Copie e resgate recompensas de diamantes, recursos e antitoxina.",
+  keywords: [
+    "Last Asylum códigos",
+    "Last Asylum gift codes",
+    "Códigos presente Last Asylum",
+    "Códigos ativos Last Asylum",
+    "Last Asylum cupons",
+    "Last Asylum resgate"
+  ],
+  openGraph: {
+    title: "Códigos de Resgate Ativos (Gift Codes) - Last Asylum BR",
+    description: "Lista de todos os códigos de presente ativos de Last Asylum Plague. Copie e resgate recompensas grátis de antitoxina, diamantes e recursos.",
+    url: "https://lapbr.netlify.app/codigos",
+    siteName: "Last Asylum BR",
+    images: [
+      {
+        url: "https://res.cloudinary.com/orrs3pvy/image/upload/v1786313785/preview-link-url_rcc5uk.webp",
+        width: 1200,
+        height: 630,
+        alt: "Last Asylum BR Gift Codes"
       }
-    };
-
-    fetchCodes();
-  }, []);
-
-  const handleCopy = (codeText: string, id: string) => {
-    navigator.clipboard.writeText(codeText);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
-  };
-
-  // Verifica se o código tem mais de 30 dias (1 mês) de criação/adição
-  const isOldCode = (addedDateStr: string) => {
-    const addedTime = new Date(addedDateStr).getTime();
-    const oneMonthMs = 30 * 24 * 60 * 60 * 1000;
-    return (Date.now() - addedTime) > oneMonthMs;
-  };
-
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString("pt-BR", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric"
-    });
-  };
-
-  return (
-    <>
-      {/* CABEÇALHO DA PÁGINA */}
-      <div className="text-center max-w-3xl mx-auto mb-12">
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900/90 border border-[#00ff88]/30 text-xs font-semibold text-[#00ff88] mb-4">
-          <span>🎁 Recompensas Gratuitas</span>
-        </div>
-        <h1 className="text-3xl sm:text-5xl font-extrabold text-white drop-shadow-md">
-          Códigos <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00ff88] to-emerald-400">Presente</span>
-        </h1>
-        <p className="mt-3 text-slate-300 drop-shadow-sm font-medium">
-          Copie os códigos ativos e resgate itens exclusivos direto no menu de configurações do jogo.
-        </p>
-      </div>
-
-      {loading ? (
-        <div className="flex justify-center items-center py-20">
-          <div className="w-12 h-12 border-4 border-[#00ff88] border-t-transparent rounded-full animate-spin"></div>
-        </div>
-      ) : codes.length === 0 ? (
-        <div className="bg-[#101623]/95 border border-slate-800 rounded-3xl p-8 backdrop-blur-xl text-center space-y-4 shadow-2xl">
-          <span className="text-4xl block">🗳️</span>
-          <h3 className="text-xl font-bold text-white">Nenhum código ativo</h3>
-          <p className="text-sm text-slate-400 max-w-md mx-auto">
-            Novos códigos de resgate serão anunciados no painel em breve. Fique de olho!
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 items-stretch justify-center">
-          {codes.map((item) => {
-            const isOld = isOldCode(item.created_at);
-            return (
-              <div
-                key={item.id}
-                className={`relative flex flex-col justify-between rounded-2xl bg-[#101623]/80 border ${
-                  isOld ? "border-amber-500/20 hover:border-amber-500/40" : "border-[#00ff88]/20 hover:border-[#00ff88]/40"
-                } transition-all duration-300 shadow-xl backdrop-blur-md overflow-hidden p-6`}
-              >
-                {/* Status Badge */}
-                <div className="flex justify-between items-center mb-4">
-                  <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded ${
-                    isOld 
-                      ? "bg-amber-500/10 text-orange-400 border border-amber-500/25" 
-                      : "bg-[#00ff88]/10 text-[#00ff88] border border-[#00ff88]/25"
-                  }`}>
-                    {isOld ? "ANTIGO" : "ATIVO"}
-                  </span>
-                  <span className="text-[10px] text-slate-400 font-mono">
-                    Adicionado: {formatDate(item.created_at)}
-                  </span>
-                </div>
-
-                <div className="space-y-3 mb-6">
-                  {/* Codigo de Resgate */}
-                  <div className="bg-slate-950/80 rounded-xl p-3 border border-slate-800 flex justify-between items-center gap-2">
-                    <span className="font-mono font-black text-white text-lg tracking-wider select-all">
-                      {item.code}
-                    </span>
-                    <button
-                      onClick={() => handleCopy(item.code, item.id)}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold font-mono transition-all ${
-                        copiedId === item.id
-                          ? "bg-[#00ff88] text-slate-950 font-black shadow-[0_0_12px_rgba(0,255,136,0.3)]"
-                          : "bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white"
-                      }`}
-                    >
-                      {copiedId === item.id ? "COPIADO!" : "COPIAR"}
-                    </button>
-                  </div>
-
-                  {/* Recompensas */}
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-slate-500 block">Recompensas:</span>
-                    <p className="text-xs text-slate-300 font-medium leading-relaxed bg-slate-900/30 rounded-lg p-2 border border-slate-800/40">
-                      {item.rewards || "Recursos gerais de sobrevivência."}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </>
-  );
-}
+    ],
+    locale: "pt_BR",
+    type: "website"
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Códigos de Resgate Ativos (Gift Codes) - Last Asylum BR",
+    description: "Lista de todos os códigos de presente ativos de Last Asylum Plague.",
+    images: ["https://res.cloudinary.com/orrs3pvy/image/upload/v1786313785/preview-link-url_rcc5uk.webp"]
+  }
+};
 
 export default function CodigosPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#080c14] flex items-center justify-center"><div className="w-12 h-12 border-4 border-[#00ff88] border-t-transparent rounded-full animate-spin"></div></div>}>
-      <div className="relative min-h-screen flex flex-col bg-[#080c14] text-slate-100 selection:bg-[#00ff88] selection:text-slate-950 overflow-x-hidden">
-        {/* BACKGROUND VILA */}
-        <div className="fixed inset-0 z-0 pointer-events-none">
-          <Image
-            src="/images/village_banner_2.png"
-            alt="Background Vila"
-            fill
-            priority
-            sizes="100vw"
-            className="object-cover object-center opacity-85 scale-105"
-          />
-          <div className="absolute inset-0 bg-[#080c14]/30 backdrop-blur-[1px]"></div>
-          <div className="absolute inset-0 bg-gradient-to-b from-[#080c14]/75 via-[#080c14]/65 to-[#080c14]/85"></div>
-        </div>
-
-        <div className="relative z-10 flex flex-col min-h-screen">
-          <Header />
-          <main className="flex-1 py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
-            <CodigosContent />
-          </main>
-        </div>
+    <div className="relative min-h-screen flex flex-col bg-[#080c14] text-slate-100 selection:bg-[#00ff88] selection:text-slate-950 overflow-x-hidden">
+      {/* BACKGROUND VILA */}
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        <Image
+          src="/images/village_banner_2.png"
+          alt="Background Vila"
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover object-center opacity-85 scale-105"
+        />
+        <div className="absolute inset-0 bg-[#080c14]/30 backdrop-blur-[1px]"></div>
+        <div className="absolute inset-0 bg-gradient-to-b from-[#080c14]/75 via-[#080c14]/65 to-[#080c14]/85"></div>
       </div>
-    </Suspense>
+
+      <div className="relative z-10 flex flex-col min-h-screen">
+        <Header />
+        <main className="flex-1 py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+          <CodigosContent />
+        </main>
+      </div>
+    </div>
   );
 }
