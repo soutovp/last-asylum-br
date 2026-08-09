@@ -27,10 +27,10 @@ export const metadata: Metadata = {
     siteName: "Last Asylum BR",
     images: [
       {
-        url: "/images/last-asylum-br-logo.png",
+        url: "https://res.cloudinary.com/orrs3pvy/image/upload/v1786313785/preview-link-url_rcc5uk.webp",
         width: 1200,
         height: 630,
-        alt: "Last Asylum BR Logo"
+        alt: "Last Asylum BR Preview"
       }
     ],
     locale: "pt_BR",
@@ -40,7 +40,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Last Asylum BR - Portal, Calculadoras e Guias de Last Asylum Plague",
     description: "O hub brasileiro definitivo para Last Asylum Plague. Encontre calculadoras de recursos, calendário de eventos semanais e muito mais.",
-    images: ["/images/last-asylum-br-logo.png"]
+    images: ["https://res.cloudinary.com/orrs3pvy/image/upload/v1786313785/preview-link-url_rcc5uk.webp"]
   }
 };
 

@@ -24,6 +24,28 @@ export const metadata: Metadata = {
   verification: {
     google: "e3xRGd7jXgG6w2BGpVsdF8Voirfez3TEHqmdz3lvbYo",
   },
+  openGraph: {
+    title: "Last Asylum BR - Guias, Calculadoras e Novidades",
+    description: "Comunidade brasileira de Last Asylum. Guias de sobrevivência, calculadoras de recursos, patch notes e atualizações oficiais.",
+    url: "https://lastasylumbr.com.br",
+    siteName: "Last Asylum BR",
+    images: [
+      {
+        url: "https://res.cloudinary.com/orrs3pvy/image/upload/v1786313785/preview-link-url_rcc5uk.webp",
+        width: 1200,
+        height: 630,
+        alt: "Last Asylum BR Preview",
+      }
+    ],
+    locale: "pt_BR",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Last Asylum BR - Guias, Calculadoras e Novidades",
+    description: "Comunidade brasileira de Last Asylum. Guias de sobrevivência, calculadoras de recursos, patch notes e atualizações oficiais.",
+    images: ["https://res.cloudinary.com/orrs3pvy/image/upload/v1786313785/preview-link-url_rcc5uk.webp"],
+  },
 };
 
 export default function RootLayout({

@@ -25,10 +25,10 @@ export const metadata = {
     siteName: "Last Asylum BR",
     images: [
       {
-        url: "/images/last-asylum-br-logo.png",
+        url: "https://res.cloudinary.com/orrs3pvy/image/upload/v1786313785/preview-link-url_rcc5uk.webp",
         width: 1200,
         height: 630,
-        alt: "Last Asylum BR Logo"
+        alt: "Last Asylum BR Preview"
       }
     ],
     locale: "pt_BR",
@@ -38,7 +38,7 @@ export const metadata = {
     card: "summary_large_image",
     title: "Calculadora de Heróis: Estrelas, Nível e Habilidades - Last Asylum BR",
     description: "Calcule os custos de Antitoxina, Estrelas e Medalhas de Habilidade de Heróis para Last Asylum Plague.",
-    images: ["/images/last-asylum-br-logo.png"]
+    images: ["https://res.cloudinary.com/orrs3pvy/image/upload/v1786313785/preview-link-url_rcc5uk.webp"]
   }
 };
 

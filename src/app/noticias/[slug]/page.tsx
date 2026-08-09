@@ -26,7 +26,11 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       openGraph: {
         title: article.seo_title || article.title,
         description: article.seo_description || article.summary,
-        images: article.image_url ? [{ url: article.image_url }] : [],
+        images: [
+          {
+            url: article.image_url || "https://res.cloudinary.com/orrs3pvy/image/upload/v1786313785/preview-link-url_rcc5uk.webp"
+          }
+        ],
         type: "article",
       },
     };
