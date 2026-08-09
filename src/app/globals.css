@@ -103,3 +103,41 @@ body {
 .animate-sanctuary-aura {
 	animation: sanctuary-aura-pulse 2.8s infinite ease-in-out;
 }
+
+/* Custom Semantic Article Styling */
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+table tr:first-of-type {
+    font-weight: bold;
+}
+table tr {
+    table-layout: fixed;
+}
+table td {
+    padding: 5px 5px;
+    table-layout: auto;
+    border: 1px solid #000;
+}
+img[position] {
+    margin-bottom: 24px; 
+    width: 50%;
+}
+img[position="left"] {
+    float: left;
+    margin-right: 16px; 
+}
+img[position="right"] {
+    float: right; 
+    text-align: right;
+    margin-left: 16px; 
+}
+
+/* Global button pointer pointer cursor */
+button, 
+[type="button"], 
+[type="reset"], 
+[type="submit"] {
+    cursor: pointer;
+}

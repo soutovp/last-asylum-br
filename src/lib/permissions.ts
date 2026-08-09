@@ -85,6 +85,20 @@ export const ADMIN_PAGES: AdminPageDefinition[] = [
     allowedRoles: ["R", "E"],
   },
   {
+    id: "codigos",
+    label: "Códigos de Resgate",
+    icon: "🎁",
+    description: "Publicação e gestão de códigos presentes para jogadores.",
+    allowedRoles: ["R"],
+  },
+  {
+    id: "guias-visuais",
+    label: "Guias Visuais",
+    icon: "🖼️",
+    description: "Publicação de infográficos e imagens explicativas.",
+    allowedRoles: ["R", "E"],
+  },
+  {
     id: "usuarios",
     label: "Gestão de Usuários",
     icon: "👑",
@@ -101,7 +115,17 @@ export function getDynamicAdminPages(): AdminPageDefinition[] {
     const saved = localStorage.getItem("admin_page_permissions_matrix");
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved) as AdminPageDefinition[];
+        // Verifica se há novas páginas no código que não constam no localStorage e faz o merge
+        const missing = ADMIN_PAGES.filter(
+          (defPage) => !parsed.some((savedPage) => savedPage.id === defPage.id)
+        );
+        if (missing.length > 0) {
+          const merged = [...parsed, ...missing];
+          localStorage.setItem("admin_page_permissions_matrix", JSON.stringify(merged));
+          return merged;
+        }
+        return parsed;
       } catch {
         return ADMIN_PAGES;
       }

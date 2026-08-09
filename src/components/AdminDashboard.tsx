@@ -5,6 +5,8 @@ import { UserSession, updateSessionProfile, maskEmail } from "@/lib/auth";
 import AdminSidebar from "./AdminSidebar";
 import AdminUserManagement from "./AdminUserManagement";
 import AdminArticleEditor, { ArticleData } from "./AdminArticleEditor";
+import AdminGiftCodes from "./AdminGiftCodes";
+import AdminVisualGuides from "./AdminVisualGuides";
 import { canUserAccessPage, getAccessiblePagesForUser, ADMIN_PAGES } from "@/lib/permissions";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { compressImageToWebp } from "@/lib/imageCompression";
@@ -734,6 +736,16 @@ export default function AdminDashboard({
               {/* PÁGINA: GESTÃO DE USUÁRIOS */}
               {currentPageId === "usuarios" && (
                 <AdminUserManagement />
+              )}
+
+              {/* PÁGINA: CÓDIGOS DE RESGATE */}
+              {currentPageId === "codigos" && (
+                <AdminGiftCodes />
+              )}
+
+              {/* PÁGINA: GUIAS VISUAIS */}
+              {currentPageId === "guias-visuais" && (
+                <AdminVisualGuides />
               )}
 
               {/* PÁGINA: CONFIGURAÇÕES DE PERFIL */}
