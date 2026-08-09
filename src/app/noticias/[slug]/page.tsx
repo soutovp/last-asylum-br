@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { ROLES_REGISTRY } from "@/lib/permissions";
 import { UserRole } from "@/lib/permissions";
 import ViewCounterTrigger from "@/components/ViewCounterTrigger";
+import AdInitializer from "@/components/AdInitializer";
 
 // Métodos de geração de Metadados em tempo de execução
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
@@ -96,6 +97,32 @@ export default async function NewsDetailPage({ params }: { params: Promise<{ slu
     year: "numeric",
   });
 
+  // Lógica para injetar o anúncio In-Article após o segundo parágrafo
+  const injectAdIntoContent = (content: string) => {
+    if (!content) return "";
+    const paragraphs = content.split("</p>");
+    if (paragraphs.length <= 2) {
+      return content;
+    }
+    // Injeta apenas o marcador do AdSense de forma estática no HTML com estilo visível
+    const adMarker = `
+      </p>
+      <div id="in-article-ad" class="my-6 border border-dashed border-slate-700/60 rounded-2xl p-4 bg-slate-900/30 min-h-[150px] flex flex-col items-center justify-center">
+        <span class="text-[10px] font-mono text-slate-500 mb-2 uppercase tracking-wider block">Publicidade (Google AdSense)</span>
+        <ins class="adsbygoogle"
+             style="display:block; text-align:center; min-height:100px; width:100%;"
+             data-ad-layout="in-article"
+             data-ad-format="fluid"
+             data-ad-client="ca-pub-8887540917989782"
+             data-ad-slot="default"></ins>
+      </div>
+    `;
+    paragraphs[1] = paragraphs[1] + adMarker;
+    return paragraphs.join("</p>");
+  };
+
+  const processedContent = injectAdIntoContent(article.content || "");
+
   return (
     <div className="relative min-h-screen flex flex-col bg-[#080c14] text-slate-100 overflow-x-hidden">
       {/* BACKGROUND FIXO */}
@@ -162,9 +189,9 @@ export default async function NewsDetailPage({ params }: { params: Promise<{ slu
               </div>
             </div>
 
-            {/* Conteúdo Renderizado */}
+            {/* Conteúdo Renderizado com Anúncio Injetado */}
             <div 
-              dangerouslySetInnerHTML={{ __html: article.content || "" }} 
+              dangerouslySetInnerHTML={{ __html: processedContent }} 
               className="prose prose-invert max-w-none text-slate-200 leading-relaxed text-sm sm:text-base border-t border-slate-800/80 pt-6
                 [&_h2]:text-2xl [&_h2]:font-extrabold [&_h2]:text-[#00ff88] [&_h2]:border-b [&_h2]:border-[#00ff88]/20 [&_h2]:pb-2 [&_h2]:mt-8 [&_h2]:mb-4
                 [&_h3]:text-xl [&_h3]:font-bold [&_h3]:text-slate-200 [&_h3]:mt-6 [&_h3]:mb-3
@@ -181,6 +208,7 @@ export default async function NewsDetailPage({ params }: { params: Promise<{ slu
         </main>
       </div>
       <ViewCounterTrigger articleId={article.id} />
+      <AdInitializer />
     </div>
   );
 }
