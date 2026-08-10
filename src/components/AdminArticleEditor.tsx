@@ -30,6 +30,21 @@ interface AdminArticleEditorProps {
   onSave: () => void;
 }
 
+// Helper to generate friendly URLs (slugs)
+const slugify = (text: string) => {
+  return text
+    .toString()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // Remove acentos/diacríticos
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, "-") // Substitui espaços por hifens
+    .replace(/[^\w\-]+/g, "") // Remove caracteres não-alfanuméricos (exceto hifen)
+    .replace(/\-\-+/g, "-") // Remove hifens duplicados
+    .replace(/^-+/, "") // Remove hifens no início
+    .replace(/-+$/, ""); // Remove hifens no fim
+};
+
 // Formatador simples para deixar o HTML legível
 const formatHTMLCode = (html: string) => {
   let formatted = "";
@@ -72,6 +87,7 @@ export default function AdminArticleEditor({
   const [summary, setSummary] = useState("");
   const [scheduledAt, setScheduledAt] = useState(""); 
   const [slug, setSlug] = useState("");
+  const [isSlugEdited, setIsSlugEdited] = useState(false);
   const [seoTitle, setSeoTitle] = useState("");
   const [seoDescription, setSeoDescription] = useState("");
   const [seoKeywords, setSeoKeywords] = useState("");
@@ -164,6 +180,7 @@ export default function AdminArticleEditor({
   useEffect(() => {
     if (!articleId) {
       setSlug(`${articleType}-novo-${Date.now().toString().slice(-4)}`);
+      setIsSlugEdited(false);
       return;
     }
 
@@ -183,6 +200,7 @@ export default function AdminArticleEditor({
             setTitle(data.title);
             setSummary(data.summary);
             setSlug(data.slug);
+            setIsSlugEdited(true);
             setSeoTitle(data.seo_title || "");
             setSeoDescription(data.seo_description || "");
             setSeoKeywords(data.seo_keywords || "");
@@ -210,6 +228,7 @@ export default function AdminArticleEditor({
               setTitle(found.title);
               setSummary(found.summary);
               setSlug(found.slug);
+              setIsSlugEdited(true);
               setSeoTitle(found.seo_title);
               setSeoDescription(found.seo_description);
               setSeoKeywords(found.seo_keywords);
@@ -501,28 +520,28 @@ export default function AdminArticleEditor({
     // Mantém o autor original se estiver editando, caso contrário atribui o e-mail logado atual
     const authorEmail = articleId ? (originalAuthorEmail || currentEmail) : currentEmail;
 
-    const articlePayload: ArticleData & { author_email?: string } = {
-      id: articleId,
-      title,
-      summary,
-      content,
-      layout_columns: 1, 
-      scheduled_at: alreadyPublished ? "" : scheduledAt, 
-      slug: slug.trim().toLowerCase().replace(/\s+/g, "-"),
-      seo_title: seoTitle || title,
-      seo_description: seoDescription || summary,
-      seo_keywords: seoKeywords,
-      type: articleType,
-      status,
-      is_featured: isFeatured,
-      category: finalCategory,
-      image_url: imageUrl,
-      author_email: authorEmail,
-    };
+    // Gerar slug amigável limpo a partir do slug atual ou do título
+    let finalSlug = slugify(slug || title);
+    if (!finalSlug) {
+      finalSlug = `${articleType}-novo-${Date.now().toString().slice(-4)}`;
+    }
 
     try {
       if (isSupabaseConfigured) {
         const { supabase } = await import("@/lib/supabase");
+
+        // Checar se já existe um artigo com o mesmo slug (excluindo o atual se for edição)
+        let exists = false;
+        let query = supabase.from("articles").select("id").eq("slug", finalSlug);
+        if (articleId) {
+          query = query.neq("id", articleId);
+        }
+        const { data: existingArticles, error: checkError } = await query;
+        if (checkError) throw checkError;
+
+        if (existingArticles && existingArticles.length > 0) {
+          exists = true;
+        }
 
         const payload: any = {
           title,
@@ -530,9 +549,8 @@ export default function AdminArticleEditor({
           content,
           layout_columns: 1,
           scheduled_at: alreadyPublished ? null : (scheduledAt ? new Date(scheduledAt).toISOString() : null),
-          slug: articlePayload.slug,
-          seo_title: articlePayload.seo_title,
-          seo_description: articlePayload.seo_description,
+          seo_title: seoTitle || title,
+          seo_description: seoDescription || summary,
           seo_keywords: seoKeywords,
           type: articleType,
           status,
@@ -543,16 +561,36 @@ export default function AdminArticleEditor({
         };
 
         if (articleId) {
+          const actualSlug = exists ? `${finalSlug}-${articleId}` : finalSlug;
+          payload.slug = actualSlug;
+
           const { error } = await supabase
             .from("articles")
             .update(payload)
             .eq("id", articleId);
           if (error) throw error;
         } else {
-          const { error } = await supabase
+          // Para novos artigos, usamos um slug temporário garantido se o base já existir
+          const actualSlug = exists ? `${finalSlug}-temp-${Date.now()}` : finalSlug;
+          payload.slug = actualSlug;
+
+          const { data: insertedData, error } = await supabase
             .from("articles")
-            .insert([payload]);
+            .insert([payload])
+            .select()
+            .single();
           if (error) throw error;
+
+          // Se o slug já existia, atualizamos com o ID gerado pelo banco no final
+          if (exists && insertedData) {
+            const realId = insertedData.id;
+            const updatedSlug = `${finalSlug}-${realId}`;
+            const { error: updateSlugError } = await supabase
+              .from("articles")
+              .update({ slug: updatedSlug })
+              .eq("id", realId);
+            if (updateSlugError) throw updateSlugError;
+          }
         }
       } else {
         // Fallback local storage
@@ -566,13 +604,35 @@ export default function AdminArticleEditor({
           );
         }
 
+        const tempId = articleId || Date.now().toString();
+        const exists = list.some((a) => a.slug === finalSlug && a.id !== tempId);
+        const actualSlug = exists ? `${finalSlug}-${tempId}` : finalSlug;
+
+        const articlePayload: ArticleData & { author_email?: string } = {
+          id: tempId,
+          title,
+          summary,
+          content,
+          layout_columns: 1, 
+          scheduled_at: alreadyPublished ? "" : scheduledAt, 
+          slug: actualSlug,
+          seo_title: seoTitle || title,
+          seo_description: seoDescription || summary,
+          seo_keywords: seoKeywords,
+          type: articleType,
+          status,
+          is_featured: isFeatured,
+          category: finalCategory,
+          image_url: imageUrl,
+          author_email: authorEmail,
+        };
+
         if (articleId) {
           updatedList = updatedList.map((a) =>
             a.id === articleId ? { ...articlePayload } : a
           );
         } else {
-          const newArt = { ...articlePayload, id: Date.now().toString() };
-          updatedList.push(newArt);
+          updatedList.push(articlePayload);
         }
         localStorage.setItem("local_articles", JSON.stringify(updatedList));
       }
@@ -629,7 +689,13 @@ export default function AdminArticleEditor({
               <input
                 type="text"
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={(e) => {
+                  const newTitle = e.target.value;
+                  setTitle(newTitle);
+                  if (!isSlugEdited) {
+                    setSlug(slugify(newTitle));
+                  }
+                }}
                 placeholder="Ex: Guia Definitivo do Médico da Praga"
                 required
                 className="w-full h-12 px-4 text-sm font-medium text-white bg-slate-900 rounded-xl border border-slate-800 focus:outline-none focus:border-[#00ff88]"
@@ -933,7 +999,10 @@ export default function AdminArticleEditor({
               <input
                 type="text"
                 value={slug}
-                onChange={(e) => setSlug(e.target.value)}
+                onChange={(e) => {
+                  setSlug(e.target.value);
+                  setIsSlugEdited(true);
+                }}
                 placeholder="Ex: guia-como-evoluir-rapido"
                 required
                 className="w-full h-10 px-4 text-xs font-medium text-white bg-slate-900 rounded-xl border border-slate-800 focus:outline-none focus:border-[#00ff88]"

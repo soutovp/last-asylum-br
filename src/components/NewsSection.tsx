@@ -207,7 +207,10 @@ export default function NewsSection({ initialArticles = [] }: NewsSectionProps) 
                     <div key={item.id} className="p-8 sm:p-12 flex flex-col md:flex-row gap-8 items-center animate-in fade-in duration-300">
                       
                       {/* IMAGEM DO DESTAQUE (Com fallback) */}
-                      <div className="w-full md:w-1/2 aspect-[16/9] rounded-2xl bg-slate-900 border border-slate-800 relative overflow-hidden flex items-center justify-center">
+                      <Link 
+                        href={item.type === "guia" ? `/guias/${item.slug}` : `/noticias/${item.slug}`}
+                        className="w-full md:w-1/2 aspect-[16/9] rounded-2xl bg-slate-900 border border-slate-800 relative overflow-hidden flex items-center justify-center block"
+                      >
                         {item.image_url ? (
                           <Image 
                             src={item.image_url} 
@@ -230,7 +233,7 @@ export default function NewsSection({ initialArticles = [] }: NewsSectionProps) 
                             </div>
                           </>
                         )}
-                      </div>
+                      </Link>
 
                       {/* DETALHES DO DESTAQUE */}
                       <div className="w-full md:w-1/2 space-y-4">
@@ -242,8 +245,10 @@ export default function NewsSection({ initialArticles = [] }: NewsSectionProps) 
                           <span className="text-xs font-mono text-slate-500">• {item.readTime}</span>
                         </div>
 
-                        <h3 className="text-2xl sm:text-3xl font-extrabold text-white group-hover:text-[#00ff88] transition-colors leading-tight">
-                          {item.title}
+                         <h3 className="text-2xl sm:text-3xl font-extrabold text-white group-hover:text-[#00ff88] transition-colors leading-tight">
+                          <Link href={item.type === "guia" ? `/guias/${item.slug}` : `/noticias/${item.slug}`}>
+                            {item.title}
+                          </Link>
                         </h3>
 
                         <p className="text-sm sm:text-base text-slate-300 leading-relaxed">
@@ -252,7 +257,7 @@ export default function NewsSection({ initialArticles = [] }: NewsSectionProps) 
 
                         <div className="pt-2">
                           <Link
-                            href={item.type === "guia" ? `/guias?slug=${item.slug}` : `/noticias?slug=${item.slug}`}
+                            href={item.type === "guia" ? `/guias/${item.slug}` : `/noticias/${item.slug}`}
                             className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#00ff88] text-slate-950 font-bold text-sm shadow-[0_0_20px_rgba(0,255,136,0.3)] hover:bg-[#15ff96] transition-all transform hover:-translate-y-0.5"
                           >
                             <span>Ler Matéria Completa</span>
@@ -322,7 +327,10 @@ export default function NewsSection({ initialArticles = [] }: NewsSectionProps) 
                     
                     {/* Imagem Destaque no topo do card */}
                     {news.image_url && (
-                      <div className="aspect-[16/9] w-full overflow-hidden border-b border-slate-850 relative">
+                      <Link 
+                        href={news.type === "guia" ? `/guias/${news.slug}` : `/noticias/${news.slug}`}
+                        className="aspect-[16/9] w-full overflow-hidden border-b border-slate-850 relative block"
+                      >
                         <Image 
                           src={news.image_url} 
                           alt={news.title} 
@@ -330,7 +338,7 @@ export default function NewsSection({ initialArticles = [] }: NewsSectionProps) 
                           sizes="(max-width: 768px) 100vw, 33vw"
                           className="object-cover group-hover:scale-105 transition-transform duration-500" 
                         />
-                      </div>
+                      </Link>
                     )}
 
                     <div className="p-6 flex flex-col justify-between flex-1">
@@ -343,7 +351,9 @@ export default function NewsSection({ initialArticles = [] }: NewsSectionProps) 
                         </div>
 
                         <h3 className="text-lg font-bold text-white group-hover:text-[#00ff88] transition-colors leading-snug">
-                          {news.title}
+                          <Link href={news.type === "guia" ? `/guias/${news.slug}` : `/noticias/${news.slug}`}>
+                            {news.title}
+                          </Link>
                         </h3>
 
                         <p className="text-xs sm:text-sm text-slate-400 line-clamp-3 leading-relaxed">
@@ -354,7 +364,7 @@ export default function NewsSection({ initialArticles = [] }: NewsSectionProps) 
                       <div className="pt-6 border-t border-slate-800/80 mt-6 flex items-center justify-between">
                         <span className="text-xs font-mono text-slate-500">{news.readTime}</span>
                         <Link
-                          href={news.type === "guia" ? `/guias?slug=${news.slug}` : `/noticias?slug=${news.slug}`}
+                          href={news.type === "guia" ? `/guias/${news.slug}` : `/noticias/${news.slug}`}
                           className="text-xs font-bold text-[#00ff88] group-hover:translate-x-1 transition-transform flex items-center gap-1"
                         >
                           <span>Leia mais</span>
