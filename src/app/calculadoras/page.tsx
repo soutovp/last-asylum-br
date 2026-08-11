@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Header from "@/components/Header";
 import Calculators from "@/components/Calculators";
+import Footer from "@/components/Footer";
 
 export const metadata = {
   title: "Calculadora de Heróis: Estrelas, Nível e Habilidades - Last Asylum BR",
@@ -103,6 +104,7 @@ export default function CalculadorasPage() {
             </div>
           </section>
         </main>
+        <Footer />
       </div>
     </div>
   );

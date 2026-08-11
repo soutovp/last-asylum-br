@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import Header from "@/components/Header";
+import Footer from "@/components/Footer";
 import { isSupabaseConfigured } from "@/lib/supabase";
 
 interface NewsItem {
@@ -215,6 +216,7 @@ export default function NoticiasPage() {
           <main className="flex-1 py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
             <NoticiasContent />
           </main>
+          <Footer />
         </div>
       </div>
     </Suspense>

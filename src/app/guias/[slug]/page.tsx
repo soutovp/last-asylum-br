@@ -2,6 +2,7 @@ import { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import Header from "@/components/Header";
+import Footer from "@/components/Footer";
 import { supabase } from "@/lib/supabase";
 import { ROLES_REGISTRY } from "@/lib/permissions";
 import { UserRole } from "@/lib/permissions";
@@ -237,6 +238,7 @@ export default async function GuiaDetailPage({ params }: { params: Promise<{ slu
             </footer>
           </article>
         </main>
+        <Footer />
       </div>
       <ViewCounterTrigger articleId={article.id} />
       <AdInitializer />

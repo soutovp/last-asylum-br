@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import Hero from "@/components/Hero";
 import NewsSection from "@/components/NewsSection";
+import Footer from "@/components/Footer";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 
 export const revalidate = 60; // Revalida a cada 60 segundos (ISR)
@@ -70,6 +71,9 @@ export default async function Home() {
 
       {/* SEÇÃO DA CENTRAL DE NOTÍCIAS & ATUALIZAÇÕES BRASIL */}
       <NewsSection initialArticles={initialArticles} />
+
+      {/* FOOTER DO SITE */}
+      <Footer />
     </div>
   );
 }

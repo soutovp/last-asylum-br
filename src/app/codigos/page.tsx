@@ -2,6 +2,7 @@ import { Metadata } from "next";
 import Image from "next/image";
 import Header from "@/components/Header";
 import CodigosContent from "@/components/CodigosContent";
+import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
   title: "Códigos de Resgate Ativos (Gift Codes) - Last Asylum BR",
@@ -60,6 +61,7 @@ export default function CodigosPage() {
         <main className="flex-1 py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
           <CodigosContent />
         </main>
+        <Footer />
       </div>
     </div>
   );
