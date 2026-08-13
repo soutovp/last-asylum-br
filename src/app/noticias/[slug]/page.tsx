@@ -7,6 +7,7 @@ import { ROLES_REGISTRY } from "@/lib/permissions";
 import { UserRole } from "@/lib/permissions";
 import ViewCounterTrigger from "@/components/ViewCounterTrigger";
 import AdInitializer from "@/components/AdInitializer";
+import CommentsSection from "@/components/CommentsSection";
 
 // Métodos de geração de Metadados em tempo de execução
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
@@ -236,6 +237,9 @@ export default async function NewsDetailPage({ params }: { params: Promise<{ slu
               </div>
             </footer>
           </article>
+
+          {/* Comentários da Notícia */}
+          <CommentsSection articleSlug={slug} />
         </main>
       </div>
       <ViewCounterTrigger articleId={article.id} />

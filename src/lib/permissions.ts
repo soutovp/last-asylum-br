@@ -3,7 +3,7 @@
  * para o Painel Administrativo do Last Asylum BR.
  */
 
-export type UserRole = "ADM" | "SUPER" | "R" | "E";
+export type UserRole = "ADM" | "SUPER" | "R" | "E" | "USER";
 
 export interface RoleInfo {
   id: UserRole;
@@ -41,6 +41,13 @@ export const ROLES_REGISTRY: Record<UserRole, RoleInfo> = {
     shortName: "EDITOR",
     description: "Acesso à gestão de Heróis e Tutoriais.",
     badgeColor: "bg-cyan-500/20 text-cyan-400 border-cyan-500/30",
+  },
+  USER: {
+    id: "USER",
+    name: "Jogador",
+    shortName: "JOGADOR",
+    description: "Membro da comunidade do Last Asylum.",
+    badgeColor: "bg-slate-500/20 text-slate-300 border-slate-500/30",
   },
 };
 
