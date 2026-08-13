@@ -26,7 +26,7 @@ export default function AdminSidebar({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const accessiblePages = getAccessiblePagesForUser(session.role);
-  const pagesToRender = accessiblePages.length > 0 ? accessiblePages : getAccessiblePagesForUser("ADM");
+  const pagesToRender = accessiblePages;
   const roleInfo = ROLES_REGISTRY[session.role] || ROLES_REGISTRY.ADM;
 
   const handleLogout = async () => {

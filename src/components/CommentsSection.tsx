@@ -373,7 +373,7 @@ export default function CommentsSection({ articleSlug }: CommentsSectionProps) {
 
     if (isCollapsed) {
       return (
-        <div className="mt-3 p-3 rounded-2xl bg-slate-900/40 border border-slate-800/50 text-xs text-slate-400 flex items-center gap-3">
+        <div className="mt-3 p-3 rounded-2xl bg-[#0c101a] border border-slate-850 text-xs text-slate-400 flex items-center gap-3">
           <button
             onClick={() => toggleCollapse(comment.id)}
             className="w-6 h-6 flex items-center justify-center rounded-lg bg-slate-800 hover:bg-slate-700 text-[#00ff88] font-bold text-xs"
@@ -403,7 +403,7 @@ export default function CommentsSection({ articleSlug }: CommentsSectionProps) {
           </button>
         )}
 
-        <div className="flex-1 bg-slate-950/20 hover:bg-slate-950/40 border border-slate-900/60 rounded-3xl p-4 sm:p-5 transition-all">
+        <div className="flex-1 bg-[#101623] hover:bg-[#131b2b] border border-slate-800 rounded-3xl p-4 sm:p-5 transition-all">
           {/* TOPO: AUTOR, BADGES E METADADOS */}
           <div className="flex flex-wrap items-center justify-between gap-3 mb-2.5 pb-2.5 border-b border-slate-800/40">
             <div className="flex items-center gap-2.5">
@@ -493,7 +493,7 @@ export default function CommentsSection({ articleSlug }: CommentsSectionProps) {
 
           {/* FORMULÁRIO DE RESPOSTA INLINE */}
           {replyingToId === comment.id && (
-            <form onSubmit={(e) => handlePostReply(e, comment.id)} className="mt-4 p-4 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-3">
+            <form onSubmit={(e) => handlePostReply(e, comment.id)} className="mt-4 p-4 rounded-2xl bg-[#0c101a] border border-slate-850 space-y-3">
               <span className="text-[10px] font-mono text-cyan-400 block uppercase tracking-wider">
                 Respondendo a {comment.displayName}
               </span>
@@ -560,7 +560,7 @@ export default function CommentsSection({ articleSlug }: CommentsSectionProps) {
 
       {/* ÁREA DE POSTAR NOVO COMENTÁRIO RAIZ */}
       {session ? (
-        <form onSubmit={handlePostRootComment} className="space-y-3.5 p-5 rounded-3xl bg-slate-900/40 border border-slate-800/80">
+        <form onSubmit={handlePostRootComment} className="space-y-3.5 p-5 rounded-3xl bg-[#101623] border border-slate-800">
           <div className="flex items-center gap-2">
             <img
               src={session.avatarUrl || "https://lastasylumplague.com/wp-content/uploads/2026/04/nicole-full-image-300x266.webp"}
@@ -599,8 +599,7 @@ export default function CommentsSection({ articleSlug }: CommentsSectionProps) {
           </div>
         </form>
       ) : (
-        /* BANNER NÃO AUTENTICADO CTA COM ESTÉTICA PREMIUM */
-        <div className="p-8 rounded-3xl border border-dashed border-cyan-500/20 bg-slate-900/20 text-center space-y-4 max-w-xl mx-auto backdrop-blur-xl">
+        <div className="p-8 rounded-3xl border border-dashed border-cyan-500/20 bg-[#101623] text-center space-y-4 max-w-xl mx-auto backdrop-blur-xl shadow-2xl">
           <span className="text-3xl block">🔒</span>
           <h4 className="text-sm font-bold text-white">Deseja participar da discussão?</h4>
           <p className="text-xs text-slate-400 max-w-sm mx-auto leading-relaxed">
@@ -630,7 +629,7 @@ export default function CommentsSection({ articleSlug }: CommentsSectionProps) {
           <span className="text-xs text-slate-500 font-mono">Carregando comentários...</span>
         </div>
       ) : commentTree.length === 0 ? (
-        <div className="py-10 text-center border border-slate-900/60 rounded-3xl bg-slate-900/10">
+        <div className="py-10 text-center border border-slate-850 rounded-3xl bg-[#101623]">
           <p className="text-xs text-slate-500 font-mono">Ainda não há comentários neste artigo. Seja o primeiro a comentar!</p>
         </div>
       ) : (

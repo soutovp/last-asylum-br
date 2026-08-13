@@ -383,6 +383,26 @@ export default function AdminDashboard({
       new Date(a.scheduled_at).getTime() > Date.now()
   );
 
+  if (accessiblePages.length === 0) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6 bg-[#080c14] text-slate-100 relative z-10 w-full">
+        <div className="max-w-md w-full p-8 rounded-3xl bg-[#101623] border border-slate-800 text-center space-y-5 shadow-2xl">
+          <span className="text-4xl block">🛡️🚫</span>
+          <h2 className="text-lg font-black text-white">Acesso Restrito</h2>
+          <p className="text-xs text-slate-400 leading-relaxed">
+            Sua conta ({session.email}) está ativa, mas você não possui privilégios administrativos para acessar este painel.
+          </p>
+          <button
+            onClick={onLogout}
+            className="w-full py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs transition-colors border border-red-500/20"
+          >
+            Sair da Conta e Entrar com Outro Usuário
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex bg-[#080c14] text-slate-100 selection:bg-[#00ff88] selection:text-slate-950">
       
