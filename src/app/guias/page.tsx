@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import Header from "@/components/Header";
+import Footer from "@/components/Footer";
 import { isSupabaseConfigured } from "@/lib/supabase";
 
 interface GuideItem {
@@ -375,6 +376,7 @@ export default function GuiasPage() {
           <main className="flex-1 py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
             <GuiasContent />
           </main>
+          <Footer />
         </div>
       </div>
     </Suspense>

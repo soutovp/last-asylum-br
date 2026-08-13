@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Header from "@/components/Header";
+import Footer from "@/components/Footer";
 
 export const metadata = {
   title: "Catálogo de Heróis - Last Asylum BR",
@@ -49,6 +50,7 @@ export default function HeroisPage() {
             </p>
           </div>
         </main>
+        <Footer />
       </div>
     </div>
   );

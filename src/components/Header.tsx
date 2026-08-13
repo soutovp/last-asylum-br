@@ -97,7 +97,7 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-50 glass-header border-b border-[#00ff88]/20 bg-[#101623]/90 backdrop-blur-xl">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-[90rem] mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
           
           {/* LOGO OFICIAL 'LAST ASYLUM BR' */}
@@ -125,7 +125,7 @@ export default function Header() {
                 <Link
                   key={link.id}
                   href={link.href}
-                  className={`flex items-center gap-1.5 px-2.5 xl:px-4 py-2 text-xs xl:text-sm font-semibold rounded-full transition-all duration-200 ${
+                  className={`flex items-center gap-1 lg:gap-1.5 px-2 lg:px-2.5 xl:px-4 py-2 text-[11px] lg:text-xs xl:text-sm font-semibold rounded-full transition-all duration-200 whitespace-nowrap ${
                     isActive
                       ? "text-slate-950 bg-[#00ff88] font-bold shadow-[0_0_15px_rgba(0,255,136,0.4)]"
                       : "text-slate-300 hover:text-[#00ff88] hover:bg-slate-800/60"
@@ -134,7 +134,7 @@ export default function Header() {
                   <span className={isActive ? "text-slate-950" : "text-[#00ff88]"}>
                     {link.icon}
                   </span>
-                  <span>{link.label}</span>
+                  <span className="whitespace-nowrap">{link.label}</span>
                 </Link>
               );
             })}

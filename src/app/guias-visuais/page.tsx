@@ -2,6 +2,7 @@ import { Metadata } from "next";
 import Image from "next/image";
 import Header from "@/components/Header";
 import GuiasVisuaisContent from "@/components/GuiasVisuaisContent";
+import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
   title: "Guias Visuais, Infográficos e Layouts de Base - Last Asylum BR",
@@ -60,6 +61,7 @@ export default function GuiasVisuaisPage() {
         <main className="flex-1 py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
           <GuiasVisuaisContent />
         </main>
+        <Footer />
       </div>
     </div>
   );
