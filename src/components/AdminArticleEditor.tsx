@@ -4,6 +4,11 @@ import { useState, useEffect, useRef } from "react";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { getSavedSession } from "@/lib/auth";
 import { compressImageToWebp } from "@/lib/imageCompression";
+import { useEditor, EditorContent } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import LinkExtension from "@tiptap/extension-link";
+import ImageExtension from "@tiptap/extension-image";
+import Underline from "@tiptap/extension-underline";
 
 export interface ArticleData {
   id?: string;
@@ -98,22 +103,37 @@ export default function AdminArticleEditor({
   // Determina se o artigo já foi publicado anteriormente
   const [alreadyPublished, setAlreadyPublished] = useState(false);
   const [originalAuthorEmail, setOriginalAuthorEmail] = useState("");
-
-  // Conteúdo do Editor
   const [content, setContent] = useState("");
   const [editorMode, setEditorMode] = useState<"visual" | "html">("visual");
 
-  const editorRef = useRef<HTMLDivElement>(null);
-
-  // Estados para Ativação Visual dos Botões de Formatação
-  const [activeFormats, setActiveFormats] = useState({
-    bold: false,
-    italic: false,
-    underline: false,
-    h2: false,
-    h3: false,
-    ul: false,
-    ol: false,
+  // Configuração do Editor TipTap
+  const editor = useEditor({
+    extensions: [
+      StarterKit,
+      Underline,
+      LinkExtension.configure({
+        openOnClick: false,
+        HTMLAttributes: {
+          class: "text-[#00ff88] underline font-bold hover:text-[#15ff96]",
+          target: "_blank",
+          rel: "noopener noreferrer",
+        },
+      }),
+      ImageExtension.configure({
+        HTMLAttributes: {
+          class: "my-4 rounded-2xl max-w-full block mx-auto shadow-lg",
+        },
+      }),
+    ],
+    content: content || "<p></p>",
+    editorProps: {
+      attributes: {
+        class: "w-full min-h-[400px] p-4 rounded-xl bg-slate-900 border border-slate-800 text-sm text-slate-200 focus:outline-none focus:border-[#00ff88] overflow-y-auto prose prose-invert max-w-none [&_h2]:text-2xl [&_h2]:font-extrabold [&_h2]:text-white [&_h2]:mt-8 [&_h2]:mb-4 [&_h3]:text-xl [&_h3]:font-bold [&_h3]:text-slate-200 [&_h3]:mt-6 [&_h3]:mb-3 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-3 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-3 [&_p]:leading-relaxed [&_p]:my-2.5 focus:ring-0",
+      },
+    },
+    onUpdate: ({ editor }) => {
+      setContent(editor.getHTML());
+    },
   });
 
   // Estados das Modais Personalizadas
@@ -139,7 +159,6 @@ export default function AdminArticleEditor({
     Uploads: []
   });
 
-  const [savedRange, setSavedRange] = useState<Range | null>(null);
   const [uploadProgress, setUploadProgress] = useState(false);
 
   // Carrega uploads salvos no Banco ou LocalStorage ao montar/atualizar
@@ -208,6 +227,7 @@ export default function AdminArticleEditor({
             setIsFeatured(data.is_featured || false);
             setImageUrl(data.image_url || "");
             setContent(data.content || "");
+            editor?.commands.setContent(data.content || "");
             setOriginalAuthorEmail(data.author_email || "");
             
             if (data.scheduled_at) {
@@ -237,6 +257,7 @@ export default function AdminArticleEditor({
               setIsFeatured(found.is_featured || false);
               setImageUrl(found.image_url || "");
               setContent(found.content || "");
+              editor?.commands.setContent(found.content || "");
               setOriginalAuthorEmail(found.author_email || "");
               
               if (found.scheduled_at) {
@@ -255,145 +276,18 @@ export default function AdminArticleEditor({
     };
 
     loadArticle();
-  }, [articleId, articleType]);
+  }, [articleId, articleType, editor]);
 
-  // Configura separador de parágrafos padrão no WYSIWYG
+  // Sincroniza o conteúdo inicial quando o editor carregar
   useEffect(() => {
-    if (editorMode === "visual" && editorRef.current) {
-      document.execCommand("defaultParagraphSeparator", false, "p");
-      if (editorRef.current.innerHTML !== content) {
-        editorRef.current.innerHTML = content;
-      }
+    if (editor && content && editor.isEmpty) {
+      editor.commands.setContent(content);
     }
-  }, [editorMode, content]);
-
-  // Salva a seleção do cursor antes de abrir modais
-  const backupSelection = () => {
-    const sel = window.getSelection();
-    if (sel && sel.rangeCount > 0) {
-      setSavedRange(sel.getRangeAt(0));
-    }
-  };
-
-  const restoreSelection = () => {
-    if (savedRange) {
-      const sel = window.getSelection();
-      if (sel) {
-        sel.removeAllRanges();
-        sel.addRange(savedRange);
-      }
-    }
-  };
-
-  // Atualiza estados dos botões de formatação ativa
-  const updateToolbarStates = () => {
-    setActiveFormats({
-      bold: document.queryCommandState("bold"),
-      italic: document.queryCommandState("italic"),
-      underline: document.queryCommandState("underline"),
-      h2: document.queryCommandValue("formatBlock") === "h2",
-      h3: document.queryCommandValue("formatBlock") === "h3",
-      ul: document.queryCommandState("insertUnorderedList"),
-      ol: document.queryCommandState("insertOrderedList"),
-    });
-  };
-
-  const syncContentFromVisual = () => {
-    if (editorRef.current) {
-      setContent(editorRef.current.innerHTML);
-    }
-  };
-
-  const formatText = (command: string, value = "") => {
-    document.execCommand(command, false, value);
-    syncContentFromVisual();
-    updateToolbarStates();
-  };
-
-  // Atalhos de teclado no Editor (keydown)
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (e.ctrlKey) {
-      const key = e.key.toLowerCase();
-      if (key === "b") {
-        e.preventDefault();
-        formatText("bold");
-      } else if (key === "i") {
-        e.preventDefault();
-        formatText("italic");
-      } else if (key === "u") {
-        e.preventDefault();
-        formatText("underline");
-      }
-    }
-
-    // Interceptação de Enter / Shift+Enter
-    if (e.key === "Enter") {
-      const selection = window.getSelection();
-      if (selection && selection.rangeCount > 0) {
-        const range = selection.getRangeAt(0);
-        let node = range.startContainer;
-        let liNode: HTMLElement | null = null;
-        while (node && node !== editorRef.current) {
-          if (node.nodeName === "LI") {
-            liNode = node as HTMLElement;
-            break;
-          }
-          node = node.parentNode!;
-        }
-
-        // Comportamento customizado dentro de Listas
-        if (liNode) {
-          e.preventDefault();
-          if (e.shiftKey) {
-            document.execCommand("insertParagraph");
-          } else {
-            const parentList = liNode.parentNode;
-            if (parentList) {
-              const nextP = document.createElement("p");
-              nextP.innerHTML = "<br>";
-              if (parentList.nextSibling) {
-                parentList.parentNode?.insertBefore(nextP, parentList.nextSibling);
-              } else {
-                parentList.parentNode?.appendChild(nextP);
-              }
-              const newRange = document.createRange();
-              newRange.setStart(nextP, 0);
-              newRange.collapse(true);
-              selection.removeAllRanges();
-              selection.addRange(newRange);
-            }
-          }
-          syncContentFromVisual();
-          updateToolbarStates();
-          return;
-        }
-
-        // Fora de listas: se a linha estiver vazia, insere <br> ao invés de <p>
-        const textContent = range.startContainer.textContent || "";
-        if (textContent.trim() === "") {
-          e.preventDefault();
-          document.execCommand("insertHTML", false, "<br>");
-          syncContentFromVisual();
-          return;
-        }
-
-        // Reseta todos os efeitos de texto ativos no Enter
-        setTimeout(() => {
-          if (document.queryCommandState("bold")) document.execCommand("bold");
-          if (document.queryCommandState("italic")) document.execCommand("italic");
-          if (document.queryCommandState("underline")) document.execCommand("underline");
-          updateToolbarStates();
-        }, 0);
-      }
-    }
-  };
+  }, [editor, content]);
 
   // Abre Modal de Imagens
   const openImageModal = (target: "editor" | "destaque") => {
     setImageTarget(target);
-    if (target === "editor") {
-      backupSelection();
-    }
     setShowImageModal(true);
   };
 
@@ -476,34 +370,30 @@ export default function AdminArticleEditor({
     if (imageTarget === "destaque") {
       setImageUrl(url);
     } else {
-      restoreSelection();
-      document.execCommand("insertHTML", false, `<img src="${url}" alt="Imagem do artigo" class="my-4 rounded-2xl max-w-full block mx-auto shadow-lg" />`);
-      syncContentFromVisual();
+      editor?.chain().focus().setImage({ src: url, alt: "Imagem do artigo" }).run();
     }
     setShowImageModal(false);
   };
 
   // Abre Modal de Link
   const openLinkModal = () => {
-    backupSelection();
-    const selText = window.getSelection()?.toString() || "";
-    setLinkText(selText);
+    if (editor) {
+      const { from, to } = editor.state.selection;
+      const selText = editor.state.doc.textBetween(from, to, " ");
+      setLinkText(selText);
+    } else {
+      setLinkText("");
+    }
     setLinkUrl("");
     setShowLinkModal(true);
   };
 
   const selectLink = (e: React.FormEvent) => {
     e.preventDefault();
-    restoreSelection();
-    if (linkUrl) {
-      document.execCommand(
-        "insertHTML",
-        false,
-        `<a href="${linkUrl}" target="_blank" rel="noopener noreferrer" class="text-[#00ff88] underline font-bold hover:text-[#15ff96]">${linkText || linkUrl}</a>`
-      );
+    if (linkUrl && editor) {
+      editor.chain().focus().insertContent(`<a href="${linkUrl}" target="_blank" rel="noopener noreferrer" class="text-[#00ff88] underline font-bold hover:text-[#15ff96]">${linkText || linkUrl}</a>`).run();
     }
     setShowLinkModal(false);
-    syncContentFromVisual();
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -511,8 +401,9 @@ export default function AdminArticleEditor({
     setErrMsg("");
     setSaveLoading(true);
 
-    if (editorMode === "visual") {
-      syncContentFromVisual();
+    let finalContent = content;
+    if (editorMode === "visual" && editor) {
+      finalContent = editor.getHTML();
     }
     const finalCategory = articleType === "guia" ? "Guias" : "Atualizações";
     const session = getSavedSession();
@@ -546,7 +437,7 @@ export default function AdminArticleEditor({
         const payload: any = {
           title,
           summary,
-          content,
+          content: finalContent,
           layout_columns: 1,
           scheduled_at: alreadyPublished ? null : (scheduledAt ? new Date(scheduledAt).toISOString() : null),
           seo_title: seoTitle || title,
@@ -612,7 +503,7 @@ export default function AdminArticleEditor({
           id: tempId,
           title,
           summary,
-          content,
+          content: finalContent,
           layout_columns: 1, 
           scheduled_at: alreadyPublished ? "" : scheduledAt, 
           slug: actualSlug,
@@ -641,6 +532,118 @@ export default function AdminArticleEditor({
       setErrMsg("Erro ao salvar artigo: " + err.message);
     } finally {
       setSaveLoading(false);
+    }
+  };
+
+  const handleHtmlKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    const textarea = e.currentTarget;
+    const { selectionStart, selectionEnd, value } = textarea;
+
+    // Auto-identação ao pressionar "Enter"
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const textBefore = value.substring(0, selectionStart);
+      const textAfter = value.substring(selectionEnd);
+      
+      const lineStart = textBefore.lastIndexOf("\n") + 1;
+      const currentLine = textBefore.substring(lineStart);
+      const indentMatch = currentLine.match(/^(\s*)/);
+      const currentIndent = indentMatch ? indentMatch[1] : "";
+      
+      const charBefore = selectionStart > 0 ? value[selectionStart - 1] : "";
+      const nextTwoChars = value.substring(selectionEnd, selectionEnd + 2);
+
+      // Cenário 1: Enter entre abertura e fechamento de tag (ex: <p>|</p>) -> divide em 3 linhas
+      if (charBefore === ">" && nextTwoChars === "</") {
+        const tabChar = "  ";
+        const insertText = `\n${currentIndent}${tabChar}\n${currentIndent}`;
+        const newValue = textBefore + insertText + textAfter;
+        setContent(newValue);
+
+        const newCursorPos = selectionStart + 1 + currentIndent.length + tabChar.length;
+        setTimeout(() => {
+          textarea.selectionStart = textarea.selectionEnd = newCursorPos;
+        }, 0);
+        return;
+      }
+
+      // Cenário 2: Enter após tag de abertura (ex: <div>|) -> adiciona indentação
+      const trimmedLine = currentLine.trim();
+      const lastTagMatch = trimmedLine.match(/<(\/?[a-zA-Z1-6]+)[^>]*>$/);
+      let shouldIndent = false;
+      
+      if (lastTagMatch) {
+        const lastTagName = lastTagMatch[1].toLowerCase();
+        const voidElements = ["img", "br", "hr", "input", "meta", "link", "source", "embed", "param", "track", "col", "area"];
+        if (!lastTagName.startsWith("/") && !voidElements.includes(lastTagName) && !trimmedLine.endsWith("/>")) {
+          shouldIndent = true;
+        }
+      }
+
+      if (shouldIndent) {
+        const tabChar = "  ";
+        const insertText = `\n${currentIndent}${tabChar}`;
+        const newValue = textBefore + insertText + textAfter;
+        setContent(newValue);
+
+        const newCursorPos = selectionStart + 1 + currentIndent.length + tabChar.length;
+        setTimeout(() => {
+          textarea.selectionStart = textarea.selectionEnd = newCursorPos;
+        }, 0);
+        return;
+      }
+
+      // Cenário 3: Enter comum -> mantém a mesma indentação da linha anterior
+      const insertText = `\n${currentIndent}`;
+      const newValue = textBefore + insertText + textAfter;
+      setContent(newValue);
+
+      const newCursorPos = selectionStart + 1 + currentIndent.length;
+      setTimeout(() => {
+        textarea.selectionStart = textarea.selectionEnd = newCursorPos;
+      }, 0);
+      return;
+    }
+
+    if (e.key === "Tab") {
+      e.preventDefault();
+      const tabChar = "  "; // 2 espaços para tabulação
+      const textBefore = value.substring(0, selectionStart);
+      const newValue = textBefore + tabChar + value.substring(selectionEnd);
+      setContent(newValue);
+
+      const newCursorPos = selectionStart + tabChar.length;
+      setTimeout(() => {
+        textarea.selectionStart = textarea.selectionEnd = newCursorPos;
+      }, 0);
+      return;
+    }
+
+    if (e.key === ">" && selectionStart === selectionEnd) {
+      const textBefore = value.substring(0, selectionStart);
+      const lastOpenAngle = textBefore.lastIndexOf("<");
+
+      if (lastOpenAngle !== -1 && !textBefore.substring(lastOpenAngle).includes(">")) {
+        const tagContent = textBefore.substring(lastOpenAngle + 1).trim();
+        const match = tagContent.match(/^([a-zA-Z1-6]+)/);
+
+        if (match && !tagContent.startsWith("/") && !tagContent.endsWith("/")) {
+          const tagName = match[1];
+          const voidElements = ["img", "br", "hr", "input", "meta", "link", "source", "embed", "param", "track", "col", "area"];
+
+          if (!voidElements.includes(tagName.toLowerCase())) {
+            e.preventDefault();
+            const closingTag = `></${tagName}>`;
+            const newValue = textBefore + closingTag + value.substring(selectionEnd);
+            setContent(newValue);
+
+            const newCursorPos = selectionStart + 1;
+            setTimeout(() => {
+              textarea.selectionStart = textarea.selectionEnd = newCursorPos;
+            }, 0);
+          }
+        }
+      }
     }
   };
 
@@ -732,19 +735,24 @@ export default function AdminArticleEditor({
               <div className="flex items-center gap-1.5 bg-slate-900 p-1 rounded-xl border border-slate-800">
                 <button
                   type="button"
-                  onClick={() => setEditorMode("visual")}
+                  onClick={() => {
+                    if (editor) {
+                      editor.commands.setContent(content);
+                    }
+                    setEditorMode("visual");
+                  }}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                     editorMode === "visual" ? "bg-slate-800 text-[#00ff88]" : "text-slate-400"
                   }`}
                 >
-                  Visual WYSIWYG
+                  Escrita
                 </button>
                 <button
                   type="button"
                   onClick={() => {
                     if (editorMode === "visual") {
-                      syncContentFromVisual();
-                      setContent(prev => formatHTMLCode(prev));
+                      const htmlContent = editor?.getHTML() || "";
+                      setContent(formatHTMLCode(htmlContent));
                     }
                     setEditorMode("html");
                   }}
@@ -757,13 +765,26 @@ export default function AdminArticleEditor({
               </div>
             </div>
 
+            {editorMode === "html" && (
+              <div className="flex justify-end bg-slate-900 p-2 rounded-xl border border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setContent(prev => formatHTMLCode(prev))}
+                  className="px-3 py-1.5 rounded bg-slate-800 text-slate-200 hover:text-[#00ff88] hover:bg-slate-700/80 text-xs font-bold transition-colors border border-slate-700/40"
+                  title="Identar e organizar a legibilidade do código HTML"
+                >
+                  🧹 Auto Formatar HTML
+                </button>
+              </div>
+            )}
+
             {editorMode === "visual" && (
               <div className="flex flex-wrap gap-1 bg-slate-900 p-2 rounded-xl border border-slate-800">
                 <button
                   type="button"
-                  onMouseDown={(e) => { e.preventDefault(); formatText("bold"); }}
+                  onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().toggleBold().run(); }}
                   className={`px-3 py-1.5 rounded text-xs font-bold transition-colors ${
-                    activeFormats.bold ? "bg-[#00ff88] text-slate-950 font-black" : "bg-slate-800 text-slate-200 hover:text-white"
+                    editor?.isActive("bold") ? "bg-[#00ff88] text-slate-950 font-black" : "bg-slate-800 text-slate-200 hover:text-white"
                   }`}
                   title="Negrito (Ctrl+B)"
                 >
@@ -771,9 +792,9 @@ export default function AdminArticleEditor({
                 </button>
                 <button
                   type="button"
-                  onMouseDown={(e) => { e.preventDefault(); formatText("italic"); }}
+                  onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().toggleItalic().run(); }}
                   className={`px-3 py-1.5 rounded text-xs italic transition-colors ${
-                    activeFormats.italic ? "bg-[#00ff88] text-slate-950 font-black" : "bg-slate-800 text-slate-200 hover:text-white"
+                    editor?.isActive("italic") ? "bg-[#00ff88] text-slate-950 font-black" : "bg-slate-800 text-slate-200 hover:text-white"
                   }`}
                   title="Itálico (Ctrl+I)"
                 >
@@ -781,9 +802,9 @@ export default function AdminArticleEditor({
                 </button>
                 <button
                   type="button"
-                  onMouseDown={(e) => { e.preventDefault(); formatText("underline"); }}
+                  onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().toggleUnderline().run(); }}
                   className={`px-3 py-1.5 rounded text-xs underline transition-colors ${
-                    activeFormats.underline ? "bg-[#00ff88] text-slate-950 font-black" : "bg-slate-800 text-slate-200 hover:text-white"
+                    editor?.isActive("underline") ? "bg-[#00ff88] text-slate-950 font-black" : "bg-slate-800 text-slate-200 hover:text-white"
                   }`}
                   title="Sublinhado (Ctrl+U)"
                 >
@@ -792,9 +813,9 @@ export default function AdminArticleEditor({
                 <span className="w-px h-6 bg-slate-800 my-auto"></span>
                 <button
                   type="button"
-                  onMouseDown={(e) => { e.preventDefault(); formatText("formatBlock", activeFormats.h2 ? "div" : "h2"); }}
+                  onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().toggleHeading({ level: 2 }).run(); }}
                   className={`px-3 py-1.5 rounded text-xs font-mono transition-colors ${
-                    activeFormats.h2 ? "bg-[#00ff88] text-slate-950 font-black" : "bg-slate-800 text-slate-200 hover:text-white"
+                    editor?.isActive("heading", { level: 2 }) ? "bg-[#00ff88] text-slate-950 font-black" : "bg-slate-800 text-slate-200 hover:text-white"
                   }`}
                   title="Título H2"
                 >
@@ -802,9 +823,9 @@ export default function AdminArticleEditor({
                 </button>
                 <button
                   type="button"
-                  onMouseDown={(e) => { e.preventDefault(); formatText("formatBlock", activeFormats.h3 ? "div" : "h3"); }}
+                  onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().toggleHeading({ level: 3 }).run(); }}
                   className={`px-3 py-1.5 rounded text-xs font-mono transition-colors ${
-                    activeFormats.h3 ? "bg-[#00ff88] text-slate-950 font-black" : "bg-slate-800 text-slate-200 hover:text-white"
+                    editor?.isActive("heading", { level: 3 }) ? "bg-[#00ff88] text-slate-950 font-black" : "bg-slate-800 text-slate-200 hover:text-white"
                   }`}
                   title="Título H3"
                 >
@@ -813,9 +834,9 @@ export default function AdminArticleEditor({
                 <span className="w-px h-6 bg-slate-800 my-auto"></span>
                 <button
                   type="button"
-                  onMouseDown={(e) => { e.preventDefault(); formatText("insertUnorderedList"); }}
+                  onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().toggleBulletList().run(); }}
                   className={`px-3 py-1.5 rounded text-xs transition-colors ${
-                    activeFormats.ul ? "bg-[#00ff88] text-slate-950 font-black" : "bg-slate-800 text-slate-200 hover:text-white"
+                    editor?.isActive("bulletList") ? "bg-[#00ff88] text-slate-950 font-black" : "bg-slate-800 text-slate-200 hover:text-white"
                   }`}
                   title="Lista com Marcadores"
                 >
@@ -823,9 +844,9 @@ export default function AdminArticleEditor({
                 </button>
                 <button
                   type="button"
-                  onMouseDown={(e) => { e.preventDefault(); formatText("insertOrderedList"); }}
+                  onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().toggleOrderedList().run(); }}
                   className={`px-3 py-1.5 rounded text-xs transition-colors ${
-                    activeFormats.ol ? "bg-[#00ff88] text-slate-950 font-black" : "bg-slate-800 text-slate-200 hover:text-white"
+                    editor?.isActive("orderedList") ? "bg-[#00ff88] text-slate-950 font-black" : "bg-slate-800 text-slate-200 hover:text-white"
                   }`}
                   title="Lista Numerada"
                 >
@@ -853,25 +874,12 @@ export default function AdminArticleEditor({
 
             <div className="w-full">
               {editorMode === "visual" ? (
-                <div
-                  ref={editorRef}
-                  contentEditable
-                  onKeyDown={handleKeyDown}
-                  onKeyUp={updateToolbarStates}
-                  onMouseUp={updateToolbarStates}
-                  onBlur={syncContentFromVisual}
-                  className="w-full min-h-[400px] p-4 rounded-xl bg-slate-900 border border-slate-800 text-sm text-slate-200 focus:outline-none focus:border-[#00ff88] overflow-y-auto prose prose-invert max-w-none 
-                    [&_h2]:text-2xl [&_h2]:font-extrabold [&_h2]:text-white [&_h2]:mt-8 [&_h2]:mb-4
-                    [&_h3]:text-xl [&_h3]:font-bold [&_h3]:text-slate-200 [&_h3]:mt-6 [&_h3]:mb-3
-                    [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-3
-                    [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-3
-                    [&_p]:leading-relaxed [&_p]:my-2.5"
-                  style={{ whiteSpace: "pre-wrap" }}
-                />
+                <EditorContent editor={editor} />
               ) : (
                 <textarea
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
+                  onKeyDown={handleHtmlKeyDown}
                   rows={20}
                   placeholder="Cole ou digite código HTML puro..."
                   className="w-full p-4 rounded-xl bg-slate-900 border border-slate-800 font-mono text-xs text-[#00ff88] focus:outline-none focus:border-[#00ff88]"

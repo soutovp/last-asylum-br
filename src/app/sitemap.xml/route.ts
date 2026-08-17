@@ -13,7 +13,6 @@ export async function GET() {
   const staticRoutes = [
     "",
     "/calculadoras",
-    "/eventos",
     "/herois",
     "/guias",
     "/noticias",

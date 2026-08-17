@@ -75,7 +75,7 @@ export default async function GuiaDetailPage({ params }: { params: Promise<{ slu
   }
 
   // Busca dados do autor
-  let authorName = "Fernando Silva";
+  let authorName = "Fernando Souto";
   let authorRole = "Administrador";
   let authorAvatar = "https://lastasylumplague.com/wp-content/uploads/2026/04/nicole-full-image-300x266.webp";
 
