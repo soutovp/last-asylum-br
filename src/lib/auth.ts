@@ -138,7 +138,7 @@ export async function resetAdminPassword(
   if (isSupabaseConfigured) {
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/admin?view=reset-password`,
+        redirectTo: `${window.location.origin}/login?view=reset-password`,
       });
       if (error) {
         return { success: false, error: error.message };
@@ -159,6 +159,27 @@ export async function resetAdminPassword(
     success: false,
     error: "E-mail não encontrado no sistema.",
   };
+}
+
+/**
+ * Atualiza a senha do usuário autenticado no Supabase
+ */
+export async function updateUserPassword(
+  newPassword: string
+): Promise<{ success: boolean; error?: string }> {
+  if (isSupabaseConfigured) {
+    try {
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      if (error) {
+        return { success: false, error: error.message };
+      }
+      return { success: true };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Erro ao atualizar a senha.";
+      return { success: false, error: message };
+    }
+  }
+  return { success: true };
 }
 
 /**

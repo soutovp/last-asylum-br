@@ -51,9 +51,14 @@ export default function CadastroPage() {
       if (res.success) {
         setSuccess(true);
       } else {
-        const errorMsg = typeof res.error === "string"
-          ? res.error
-          : (res.error ? JSON.stringify(res.error) : "Erro ao realizar cadastro.");
+        let errorMsg = "Erro ao realizar cadastro.";
+        if (typeof res.error === "string") {
+          errorMsg = res.error;
+        } else if (res.error && typeof res.error === "object") {
+          console.error("Erro detalhado do cadastro:", res.error);
+          const errObj = res.error as any;
+          errorMsg = errObj.message || errObj.error_description || "Erro interno no servidor. Tente novamente.";
+        }
         setErrorMessage(errorMsg);
       }
     } catch (err) {
