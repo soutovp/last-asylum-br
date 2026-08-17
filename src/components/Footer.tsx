@@ -90,6 +90,7 @@ export default function Footer() {
           <span>&copy; {new Date().getFullYear()} Last Asylum BR. Todos os direitos reservados.</span>
           <div className="flex gap-4">
             <Link href="/privacidade" className="hover:text-slate-300 transition-colors">Política de Privacidade</Link>
+            <Link href="/termos" className="hover:text-slate-300 transition-colors">Termos de Serviço</Link>
           </div>
         </div>
 

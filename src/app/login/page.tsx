@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
+import Footer from "@/components/Footer";
 import { loginAdmin, resetAdminPassword, getSavedSession } from "@/lib/auth";
 import { isSupabaseConfigured } from "@/lib/supabase";
 
@@ -46,7 +47,10 @@ export default function LoginPage() {
         // Força atualização do header
         window.dispatchEvent(new Event("auth_state_change"));
       } else {
-        setErrorMessage(res.error || "Falha na autenticação. Verifique seu e-mail e senha, ou confirme seu cadastro.");
+        const errorMsg = typeof res.error === "string"
+          ? res.error
+          : (res.error ? JSON.stringify(res.error) : "Falha na autenticação. Verifique seu e-mail e senha, ou confirme seu cadastro.");
+        setErrorMessage(errorMsg);
       }
     } catch {
       setErrorMessage("Ocorreu um erro ao tentar realizar o login.");
@@ -283,6 +287,7 @@ export default function LoginPage() {
             )}
           </div>
         </main>
+        <Footer />
       </div>
     </div>
   );

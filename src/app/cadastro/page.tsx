@@ -4,6 +4,7 @@ import { useState, FormEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import Header from "@/components/Header";
+import Footer from "@/components/Footer";
 import { signUpUser } from "@/lib/auth";
 import { isSupabaseConfigured } from "@/lib/supabase";
 
@@ -50,7 +51,10 @@ export default function CadastroPage() {
       if (res.success) {
         setSuccess(true);
       } else {
-        setErrorMessage(res.error || "Erro ao realizar cadastro.");
+        const errorMsg = typeof res.error === "string"
+          ? res.error
+          : (res.error ? JSON.stringify(res.error) : "Erro ao realizar cadastro.");
+        setErrorMessage(errorMsg);
       }
     } catch (err) {
       setErrorMessage("Ocorreu um erro ao processar o cadastro.");
@@ -284,6 +288,7 @@ export default function CadastroPage() {
             )}
           </div>
         </main>
+        <Footer />
       </div>
     </div>
   );

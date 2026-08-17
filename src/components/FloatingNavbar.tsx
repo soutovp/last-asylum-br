@@ -1,12 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { getSavedSession, UserSession } from "@/lib/auth";
 
 export default function FloatingNavbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
+  const [session, setSession] = useState<UserSession | null>(null);
+
+  useEffect(() => {
+    setSession(getSavedSession());
+    const handleAuthChange = () => {
+      setSession(getSavedSession());
+    };
+    window.addEventListener("auth_state_change", handleAuthChange);
+    return () => {
+      window.removeEventListener("auth_state_change", handleAuthChange);
+    };
+  }, []);
 
   const navItems = [
     {
@@ -113,9 +126,31 @@ export default function FloatingNavbar() {
           })}
         </div>
 
-        {/* BADGE BRASIL À DIREITA */}
-        <div className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-slate-900/80 border border-[#00ff88]/30 text-xs font-semibold text-slate-300 shadow-inner">
-          <span className="font-mono text-[#00ff88]">BR</span>
+        {/* AUTH E BADGE BRASIL À DIREITA */}
+        <div className="flex items-center gap-3">
+          {session ? (
+            <Link href="/perfil" className="flex items-center gap-2 group p-1 pr-3.5 rounded-full bg-slate-900 border border-slate-800 hover:border-[#00ff88]/50 transition-colors">
+              <img 
+                src={session.avatarUrl || "https://lastasylumplague.com/wp-content/uploads/2026/04/nicole-full-image-300x266.webp"} 
+                alt="Avatar" 
+                className="w-7 h-7 rounded-full object-cover border border-[#00ff88]/30 group-hover:border-[#00ff88] transition-colors"
+              />
+              <span className="text-xs font-semibold text-slate-300 group-hover:text-white transition-colors">
+                {session.characterName && session.useCharacterName ? session.characterName : `${session.firstName}`}
+              </span>
+            </Link>
+          ) : (
+            <Link 
+              href="/login" 
+              className="px-4 py-1.5 text-[11px] sm:text-xs font-bold text-slate-950 bg-[#00ff88] rounded-full shadow-[0_0_10px_rgba(0,255,136,0.2)] hover:bg-[#15ff96] transition-all"
+            >
+              Entrar
+            </Link>
+          )}
+
+          <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/80 border border-[#00ff88]/30 text-[11px] sm:text-xs font-semibold text-slate-300 shadow-inner">
+            <span className="font-mono text-[#00ff88]">BR</span>
+          </div>
         </div>
 
         {/* BOTÃO MOBILE */}
@@ -155,6 +190,31 @@ export default function FloatingNavbar() {
               </Link>
             );
           })}
+
+          <div className="pt-2 border-t border-slate-800 mt-2">
+            {session ? (
+              <Link
+                href="/perfil"
+                onClick={() => setMobileOpen(false)}
+                className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-slate-200 hover:text-[#00ff88] hover:bg-slate-900 border border-transparent"
+              >
+                <img 
+                  src={session.avatarUrl || "https://lastasylumplague.com/wp-content/uploads/2026/04/nicole-full-image-300x266.webp"} 
+                  alt="Avatar" 
+                  className="w-5 h-5 rounded-full object-cover border border-[#00ff88]/40"
+                />
+                <span>Meu Perfil ({session.characterName && session.useCharacterName ? session.characterName : `${session.firstName}`})</span>
+              </Link>
+            ) : (
+              <Link
+                href="/login"
+                onClick={() => setMobileOpen(false)}
+                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-slate-950 bg-[#00ff88] hover:bg-[#15ff96] transition-all shadow-[0_0_15px_rgba(0,255,136,0.2)]"
+              >
+                <span>🔑 Entrar / Cadastrar</span>
+              </Link>
+            )}
+          </div>
         </div>
       )}
     </nav>
