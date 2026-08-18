@@ -124,26 +124,51 @@ export default function Header() {
           {/* DESKTOP NAVIGATION LINKS COM ÍCONES VETORIZADOS - RESPONSIVO E DINÂMICO */}
           <nav className="hidden md:flex items-center gap-1 xl:gap-1.5 bg-slate-900/80 p-1.5 rounded-full border border-slate-800">
             {navLinks.map((link) => {
-              const isActive =
+              const isExternal = link.href.startsWith("http");
+              const isActive = !isExternal && (
                 link.href === "/"
                   ? pathname === "/"
                   : link.href === "/guias"
                   ? pathname === "/guias" || pathname.startsWith("/guias/")
-                  : pathname.startsWith(link.href);
-              return (
-                <Link
-                  key={link.id}
-                  href={link.href}
-                  className={`flex items-center gap-1 lg:gap-1.5 px-2 lg:px-2.5 xl:px-4 py-2 text-[11px] lg:text-xs xl:text-sm font-semibold rounded-full transition-all duration-200 whitespace-nowrap ${
-                    isActive
-                      ? "text-slate-950 bg-[#00ff88] font-bold shadow-[0_0_15px_rgba(0,255,136,0.4)]"
-                      : "text-slate-300 hover:text-[#00ff88] hover:bg-slate-800/60"
-                  }`}
-                >
+                  : pathname.startsWith(link.href)
+              );
+
+              const content = (
+                <>
                   <span className={isActive ? "text-slate-950" : "text-[#00ff88]"}>
                     {link.icon}
                   </span>
                   <span className="whitespace-nowrap">{link.label}</span>
+                </>
+              );
+
+              const className = `flex items-center gap-1 lg:gap-1.5 px-2 lg:px-2.5 xl:px-4 py-2 text-[11px] lg:text-xs xl:text-sm font-semibold rounded-full transition-all duration-200 whitespace-nowrap ${
+                isActive
+                  ? "text-slate-950 bg-[#00ff88] font-bold shadow-[0_0_15px_rgba(0,255,136,0.4)]"
+                  : "text-slate-300 hover:text-[#00ff88] hover:bg-slate-800/60"
+              }`;
+
+              if (isExternal) {
+                return (
+                  <a
+                    key={link.id}
+                    href={link.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={className}
+                  >
+                    {content}
+                  </a>
+                );
+              }
+
+              return (
+                <Link
+                  key={link.id}
+                  href={link.href}
+                  className={className}
+                >
+                  {content}
                 </Link>
               );
             })}
@@ -199,17 +224,42 @@ export default function Header() {
       {/* MOBILE MENU DROPDOWN */}
       {mobileMenuOpen && (
         <div className="md:hidden bg-[#101623]/95 border-b border-[#00ff88]/20 px-4 pt-3 pb-6 space-y-2 backdrop-blur-2xl">
-          {navLinks.map((link) => (
-            <Link
-              key={link.id}
-              href={link.href}
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-slate-200 hover:text-[#00ff88] hover:bg-slate-900 border border-transparent hover:border-slate-800"
-            >
-              <span className="text-[#00ff88]">{link.icon}</span>
-              <span>{link.label}</span>
-            </Link>
-          ))}
+          {navLinks.map((link) => {
+            const isExternal = link.href.startsWith("http");
+            const content = (
+              <>
+                <span className="text-[#00ff88]">{link.icon}</span>
+                <span>{link.label}</span>
+              </>
+            );
+            const className = "flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-slate-200 hover:text-[#00ff88] hover:bg-slate-900 border border-transparent hover:border-slate-800";
+            
+            if (isExternal) {
+              return (
+                <a
+                  key={link.id}
+                  href={link.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={className}
+                >
+                  {content}
+                </a>
+              );
+            }
+
+            return (
+              <Link
+                key={link.id}
+                href={link.href}
+                onClick={() => setMobileMenuOpen(false)}
+                className={className}
+              >
+                {content}
+              </Link>
+            );
+          })}
           <div className="pt-2 border-t border-slate-800/80 mt-2">
             {session ? (
               <Link

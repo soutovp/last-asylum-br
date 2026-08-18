@@ -110,26 +110,51 @@ export default function FloatingNavbar() {
         {/* NAV LINKS DESKTOP CENTRALIZADOS */}
         <div className="hidden md:flex items-center gap-0.5 sm:gap-1.5">
           {navItems.map((item) => {
-            const isActive =
+            const isExternal = item.href.startsWith("http");
+            const isActive = !isExternal && (
               item.href === "/"
                 ? pathname === "/"
                 : item.href === "/guias"
                 ? pathname === "/guias" || pathname.startsWith("/guias/")
-                : pathname.startsWith(item.href);
-            return (
-              <Link
-                key={item.id}
-                href={item.href}
-                className={`flex items-center gap-1.5 px-2.5 sm:px-4 py-2 text-[11px] sm:text-sm font-semibold rounded-full transition-all duration-200 whitespace-nowrap ${
-                  isActive
-                    ? "bg-[#00ff88] text-slate-950 shadow-[0_0_15px_rgba(0,255,136,0.4)] transform scale-105"
-                    : "text-slate-300 hover:text-[#00ff88] hover:bg-slate-800/60"
-                }`}
-              >
+                : pathname.startsWith(item.href)
+            );
+
+            const content = (
+              <>
                 <span className={isActive ? "text-slate-950" : "text-[#00ff88]"}>
                   {item.icon}
                 </span>
                 <span className="whitespace-nowrap">{item.label}</span>
+              </>
+            );
+
+            const className = `flex items-center gap-1.5 px-2.5 sm:px-4 py-2 text-[11px] sm:text-sm font-semibold rounded-full transition-all duration-200 whitespace-nowrap ${
+              isActive
+                ? "bg-[#00ff88] text-slate-950 shadow-[0_0_15px_rgba(0,255,136,0.4)] transform scale-105"
+                : "text-slate-300 hover:text-[#00ff88] hover:bg-slate-800/60"
+            }`;
+
+            if (isExternal) {
+              return (
+                <a
+                  key={item.id}
+                  href={item.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={className}
+                >
+                  {content}
+                </a>
+              );
+            }
+
+            return (
+              <Link
+                key={item.id}
+                href={item.href}
+                className={className}
+              >
+                {content}
               </Link>
             );
           })}
@@ -173,27 +198,53 @@ export default function FloatingNavbar() {
       {mobileOpen && (
         <div className="md:hidden mt-2 p-3 rounded-2xl bg-[#101623]/95 border border-[#00ff88]/30 shadow-2xl backdrop-blur-2xl space-y-1.5 animate-in fade-in slide-in-from-top-2 duration-200">
           {navItems.map((item) => {
-            const isActive =
+            const isExternal = item.href.startsWith("http");
+            const isActive = !isExternal && (
               item.href === "/"
                 ? pathname === "/"
                 : item.href === "/guias"
                 ? pathname === "/guias" || pathname.startsWith("/guias/")
-                : pathname.startsWith(item.href);
+                : pathname.startsWith(item.href)
+            );
+
+            const content = (
+              <>
+                <span className={isActive ? "text-slate-950" : "text-[#00ff88]"}>
+                  {item.icon}
+                </span>
+                <span>{item.label}</span>
+              </>
+            );
+
+            const className = `flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+              isActive
+                ? "bg-[#00ff88] text-slate-950 font-bold"
+                : "text-slate-200 hover:bg-slate-800/80"
+            }`;
+
+            if (isExternal) {
+              return (
+                <a
+                  key={item.id}
+                  href={item.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setMobileOpen(false)}
+                  className={className}
+                >
+                  {content}
+                </a>
+              );
+            }
+
             return (
               <Link
                 key={item.id}
                 href={item.href}
                 onClick={() => setMobileOpen(false)}
-                className={`flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                  isActive
-                    ? "bg-[#00ff88] text-slate-950 font-bold"
-                    : "text-slate-200 hover:bg-slate-800/80"
-                }`}
+                className={className}
               >
-                <span className={isActive ? "text-slate-950" : "text-[#00ff88]"}>
-                  {item.icon}
-                </span>
-                <span>{item.label}</span>
+                {content}
               </Link>
             );
           })}

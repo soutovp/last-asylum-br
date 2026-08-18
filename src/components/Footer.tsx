@@ -62,6 +62,18 @@ export default function Footer() {
                 <Link href="/guias" className="hover:text-white transition-colors">Guias Estratégicos</Link>
               </li>
               <li>
+                <Link href="/calculadoras" className="hover:text-white transition-colors">Calculadoras de Recursos</Link>
+              </li>
+              <li>
+                <Link href="/codigos" className="hover:text-white transition-colors">Códigos Presente (Gift Codes)</Link>
+              </li>
+              <li>
+                <Link href="/guias-visuais" className="hover:text-white transition-colors">Guias Visuais & Tabelas</Link>
+              </li>
+              <li>
+                <Link href="/herois" className="hover:text-white transition-colors">Galeria de Heróis</Link>
+              </li>
+              <li>
                 <a 
                   href="https://discord.gg/UVY4uycSK" 
                   target="_blank" 
@@ -72,24 +84,55 @@ export default function Footer() {
                   <span className="text-[9px] text-[#00ff88] bg-[#00ff88]/10 px-1.5 py-0.5 rounded font-sans font-bold uppercase tracking-wide">Novo</span>
                 </a>
               </li>
-              <li>
-                <Link href="/herois" className="hover:text-white transition-colors">Galeria de Heróis</Link>
-              </li>
             </ul>
           </div>
 
-          {/* COLUNA 3: UTILIÁRIOS & RECURSOS */}
+          {/* COLUNA 3: CANAIS OFICIAIS */}
           <div className="space-y-3">
-            <h4 className="text-xs font-bold font-mono text-cyan-400 uppercase tracking-wider">Recursos</h4>
+            <h4 className="text-xs font-bold font-mono text-cyan-400 uppercase tracking-wider leading-relaxed">
+              Canais Oficiais <br />
+              Last Asylum Plague
+            </h4>
             <ul className="space-y-2 text-xs text-slate-400">
               <li>
-                <Link href="/calculadoras" className="hover:text-white transition-colors">Calculadoras de Recursos</Link>
+                <a 
+                  href="https://play.google.com/store/apps/details?id=com.phs.global" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="hover:text-white transition-colors"
+                >
+                  Download Android (Play Store)
+                </a>
               </li>
               <li>
-                <Link href="/codigos" className="hover:text-white transition-colors">Códigos Presente (Gift Codes)</Link>
+                <a 
+                  href="https://apps.apple.com/us/app/last-asylum-plague/id6756989323" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="hover:text-white transition-colors"
+                >
+                  Download iOS (App Store)
+                </a>
               </li>
               <li>
-                <Link href="/guias-visuais" className="hover:text-white transition-colors">Guias Visuais & Tabelas</Link>
+                <a 
+                  href="https://s.globallap.com/s/71plzq" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="hover:text-[#00ff88] text-[#00ff88] font-bold transition-colors"
+                >
+                  Recarga Oficial (Web Shop) 💎
+                </a>
+              </li>
+              <li>
+                <a 
+                  href="https://discord.com/invite/rxVwBW5d9f" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="hover:text-white transition-colors"
+                >
+                  Discord Oficial do Jogo
+                </a>
               </li>
             </ul>
           </div>
