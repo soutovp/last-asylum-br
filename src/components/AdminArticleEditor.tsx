@@ -99,6 +99,7 @@ export default function AdminArticleEditor({
   const [status, setStatus] = useState<"public" | "hidden">("public");
   const [isFeatured, setIsFeatured] = useState(false);
   const [imageUrl, setImageUrl] = useState(""); // Imagem de Destaque
+  const [notifyEmail, setNotifyEmail] = useState(true); // Disparo de Mail Marketing
 
   // Determina se o artigo já foi publicado anteriormente
   const [alreadyPublished, setAlreadyPublished] = useState(false);
@@ -451,9 +452,11 @@ export default function AdminArticleEditor({
           author_email: authorEmail,
         };
 
+        let savedSlug = finalSlug;
         if (articleId) {
           const actualSlug = exists ? `${finalSlug}-${articleId}` : finalSlug;
           payload.slug = actualSlug;
+          savedSlug = actualSlug;
 
           const { error } = await supabase
             .from("articles")
@@ -464,6 +467,7 @@ export default function AdminArticleEditor({
           // Para novos artigos, usamos um slug temporário garantido se o base já existir
           const actualSlug = exists ? `${finalSlug}-temp-${Date.now()}` : finalSlug;
           payload.slug = actualSlug;
+          savedSlug = actualSlug;
 
           const { data: insertedData, error } = await supabase
             .from("articles")
@@ -476,6 +480,7 @@ export default function AdminArticleEditor({
           if (exists && insertedData) {
             const realId = insertedData.id;
             const updatedSlug = `${finalSlug}-${realId}`;
+            savedSlug = updatedSlug;
             const { error: updateSlugError } = await supabase
               .from("articles")
               .update({ slug: updatedSlug })
@@ -527,6 +532,59 @@ export default function AdminArticleEditor({
         }
         localStorage.setItem("local_articles", JSON.stringify(updatedList));
       }
+
+      // DISPARO AUTOMÁTICO DE MAIL MARKETING (ASSÍNCRONO / NÃO-BLOQUEANTE)
+      if (status === "public" && notifyEmail) {
+        const targetSlug = slug || finalSlug;
+        const currentOrigin = typeof window !== "undefined" ? window.location.origin : undefined;
+        // Executa busca dos inscritos e disparo em background
+        (async () => {
+          try {
+            let recipients: string[] = [];
+            if (isSupabaseConfigured) {
+              const { supabase } = await import("@/lib/supabase");
+              const { data: profiles } = await supabase.from("profiles").select("email");
+              if (profiles && profiles.length > 0) {
+                recipients = profiles
+                  .map((p: any) => p.email)
+                  .filter((em: any): em is string => Boolean(em && typeof em === "string" && em.includes("@")));
+              }
+            } else {
+              const stored = localStorage.getItem("local_profiles");
+              if (stored) {
+                const parsed = JSON.parse(stored);
+                recipients = parsed
+                  .map((p: any) => p.email)
+                  .filter((em: any): em is string => Boolean(em && typeof em === "string" && em.includes("@")));
+              }
+            }
+
+            fetch("/api/mail-marketing/send", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                type: articleType === "guia" ? "artigo" : "noticia",
+                data: {
+                  title,
+                  summary,
+                  content: finalContent,
+                  slug: targetSlug,
+                  imageUrl,
+                  category: finalCategory,
+                  authorName: session?.firstName || "Last Asylum BR",
+                },
+                recipients,
+                siteUrl: currentOrigin,
+              }),
+            }).catch((err) => {
+              console.warn("[Mail Marketing Trigger Warning]:", err);
+            });
+          } catch (mailErr) {
+            console.warn("[Mail Marketing Exception Caught]:", mailErr);
+          }
+        })();
+      }
+
       onSave();
     } catch (err: any) {
       setErrMsg("Erro ao salvar artigo: " + err.message);
@@ -1055,6 +1113,30 @@ export default function AdminArticleEditor({
                 className="w-full h-10 px-4 text-xs font-medium text-white bg-slate-900 rounded-xl border border-slate-800 focus:outline-none focus:border-[#00ff88]"
               />
             </div>
+          </div>
+
+          {/* CONTROLE DE E-MAIL MARKETING */}
+          <div className="p-4 bg-slate-900/90 rounded-2xl border border-slate-800 flex items-center justify-between shadow-inner">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-[#00ff88]/10 border border-[#00ff88]/30 flex items-center justify-center text-sm">
+                📧
+              </div>
+              <div>
+                <p className="text-xs font-bold text-white">Disparar E-mail Marketing</p>
+                <p className="text-[11px] text-slate-400">
+                  Notificar todos os inscritos por e-mail (<span className="text-[#00ff88] font-mono">nao-responda@lastasylumbr.com.br</span>)
+                </p>
+              </div>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={notifyEmail}
+                onChange={(e) => setNotifyEmail(e.target.checked)}
+                className="sr-only peer"
+              />
+              <div className="w-10 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#00ff88]"></div>
+            </label>
           </div>
 
           {/* BOTÃO SALVAR */}

@@ -20,6 +20,7 @@ export default function AdminGiftCodes() {
   const [code, setCode] = useState("");
   const [rewards, setRewards] = useState("");
   const [createdAt, setCreatedAt] = useState(""); // Representa a Data de Adição
+  const [notifyEmail, setNotifyEmail] = useState(true);
 
   const fetchCodes = async () => {
     setLoading(true);
@@ -44,9 +45,12 @@ export default function AdminGiftCodes() {
     e.preventDefault();
     if (!code) return;
 
+    const formattedCode = code.trim().toUpperCase();
+    const formattedRewards = rewards.trim();
+
     const payload: any = {
-      code: code.trim().toUpperCase(),
-      rewards: rewards.trim(),
+      code: formattedCode,
+      rewards: formattedRewards,
     };
 
     // Adiciona a data de adição/criação customizada caso o usuário escolha, caso contrário usa a data atual
@@ -61,6 +65,40 @@ export default function AdminGiftCodes() {
       } else {
         // Cadastrar
         await supabase.from("gift_codes").insert([payload]);
+
+        // Disparo assíncrono de E-mail Marketing para novo código
+        if (notifyEmail) {
+          (async () => {
+            try {
+              let recipients: string[] = [];
+              const { data: profiles } = await supabase.from("profiles").select("email");
+              if (profiles && profiles.length > 0) {
+                recipients = profiles
+                  .map((p: any) => p.email)
+                  .filter((em: any): em is string => Boolean(em && typeof em === "string" && em.includes("@")));
+              }
+
+              const currentOrigin = typeof window !== "undefined" ? window.location.origin : undefined;
+              fetch("/api/mail-marketing/send", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  type: "codigo",
+                  data: {
+                    code: formattedCode,
+                    rewards: formattedRewards,
+                  },
+                  recipients,
+                  siteUrl: currentOrigin,
+                }),
+              }).catch((err) => {
+                console.warn("[Mail Marketing Code Trigger Warning]:", err);
+              });
+            } catch (mailErr) {
+              console.warn("[Mail Marketing Code Exception Caught]:", mailErr);
+            }
+          })();
+        }
       }
       resetForm();
       fetchCodes();
@@ -151,6 +189,31 @@ export default function AdminGiftCodes() {
                 className="w-full bg-slate-900 border border-slate-800 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-[#00ff88]"
               />
             </div>
+
+            {!editId && (
+              <div className="md:col-span-3 p-3.5 bg-slate-900/90 rounded-2xl border border-slate-800 flex items-center justify-between shadow-inner">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-[#00ff88]/10 border border-[#00ff88]/30 flex items-center justify-center text-sm">
+                    🎁
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-white">Disparar E-mail Marketing do Código</p>
+                    <p className="text-[11px] text-slate-400">
+                      Notificar todos os jogadores cadastrados sobre o novo cupom de presente
+                    </p>
+                  </div>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={notifyEmail}
+                    onChange={(e) => setNotifyEmail(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-10 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#00ff88]"></div>
+                </label>
+              </div>
+            )}
           </div>
           <div className="flex justify-end gap-3 pt-2">
             <button
