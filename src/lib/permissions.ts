@@ -113,6 +113,13 @@ export const ADMIN_PAGES: AdminPageDefinition[] = [
     allowedRoles: ["ADM", "SUPER"],
   },
   {
+    id: "analytics",
+    label: "Analytics & Cliques",
+    icon: "📊",
+    description: "Métricas de cliques em canais oficiais, parceiros, cópia de códigos e leituras de guias.",
+    allowedRoles: ["ADM", "SUPER"],
+  },
+  {
     id: "usuarios",
     label: "Gestão de Usuários",
     icon: "👑",
