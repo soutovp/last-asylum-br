@@ -15,6 +15,25 @@ export interface UserSession {
   characterId?: string;
   kingdomNumber?: number;
   useCharacterName?: boolean;
+  receiveNoticias?: boolean;
+  receiveGuias?: boolean;
+  receiveCodigos?: boolean;
+  receivePromocionais?: boolean;
+  unsubscribeToken?: string;
+}
+
+/**
+ * Gera um token criptográfico pseudo-aleatório seguro para Unsubscribe
+ */
+export function generateUnsubscribeToken(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return (crypto.randomUUID() + crypto.randomUUID()).replace(/-/g, "").slice(0, 48);
+  }
+  return (
+    Math.random().toString(36).substring(2) +
+    Math.random().toString(36).substring(2) +
+    Date.now().toString(36)
+  );
 }
 
 const LOCAL_STORAGE_KEY = "last_asylum_admin_session";
@@ -118,6 +137,11 @@ export async function loginAdmin(
       avatarUrl: getDeterministicHeroAvatar(DEMO_ADMIN_EMAIL),
       birthDate: "1990-05-15",
       region: "Sudeste",
+      receiveNoticias: true,
+      receiveGuias: true,
+      receiveCodigos: true,
+      receivePromocionais: true,
+      unsubscribeToken: "demo-admin-unsubscribe-token-lastasylum-2026",
     };
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(session));
     return { success: true, session };
@@ -283,47 +307,52 @@ export async function getUserSessionFromDb(email: string, userUuid: string): Pro
       .eq("id", userUuid)
       .single();
 
-    if (error || !profile) {
+    let targetProfile = profile;
+
+    if (error || !targetProfile) {
       const { data: profileByEmail } = await supabase
         .from("profiles")
         .select("*")
         .eq("email", email)
         .single();
       
-      if (profileByEmail) {
-        return {
-          id: profileByEmail.id,
-          email: profileByEmail.email,
-          role: profileByEmail.role as UserRole,
-          authenticatedAt: new Date().toISOString(),
-          firstName: profileByEmail.first_name,
-          lastName: profileByEmail.last_name,
-          avatarUrl: profileByEmail.avatar_url,
-          birthDate: profileByEmail.birth_date,
-          region: profileByEmail.region,
-          characterName: profileByEmail.character_name || undefined,
-          characterId: profileByEmail.character_id || undefined,
-          kingdomNumber: profileByEmail.kingdom_number || undefined,
-          useCharacterName: profileByEmail.use_character_name || false,
-        };
-      }
+      targetProfile = profileByEmail;
+    }
+
+    if (!targetProfile) {
       return null;
     }
 
+    // Se o usuário não possuir unsubscribe_token, gera e atualiza silenciosamente
+    let unsubscribeToken = targetProfile.unsubscribe_token;
+    if (!unsubscribeToken) {
+      unsubscribeToken = generateUnsubscribeToken();
+      supabase
+        .from("profiles")
+        .update({ unsubscribe_token: unsubscribeToken })
+        .eq("id", targetProfile.id)
+        .then(() => {});
+    }
+
     return {
-      id: profile.id,
-      email: profile.email,
-      role: profile.role as UserRole,
+      id: targetProfile.id,
+      email: targetProfile.email,
+      role: targetProfile.role as UserRole,
       authenticatedAt: new Date().toISOString(),
-      firstName: profile.first_name,
-      lastName: profile.last_name,
-      avatarUrl: profile.avatar_url,
-      birthDate: profile.birth_date,
-      region: profile.region,
-      characterName: profile.character_name || undefined,
-      characterId: profile.character_id || undefined,
-      kingdomNumber: profile.kingdom_number || undefined,
-      useCharacterName: profile.use_character_name || false,
+      firstName: targetProfile.first_name,
+      lastName: targetProfile.last_name,
+      avatarUrl: targetProfile.avatar_url,
+      birthDate: targetProfile.birth_date,
+      region: targetProfile.region,
+      characterName: targetProfile.character_name || undefined,
+      characterId: targetProfile.character_id || undefined,
+      kingdomNumber: targetProfile.kingdom_number || undefined,
+      useCharacterName: targetProfile.use_character_name || false,
+      receiveNoticias: targetProfile.receive_noticias !== false, // Padrão: true
+      receiveGuias: targetProfile.receive_guias !== false,       // Padrão: true
+      receiveCodigos: targetProfile.receive_codigos !== false,   // Padrão: true
+      receivePromocionais: targetProfile.receive_promocionais !== false, // Padrão: true
+      unsubscribeToken: unsubscribeToken,
     };
   } catch (err) {
     console.error("Erro ao carregar perfil do banco:", err);
@@ -342,6 +371,8 @@ export async function signUpUser(
   birthDate: string,
   region: string
 ): Promise<{ success: boolean; error?: string }> {
+  const unsubscribeToken = generateUnsubscribeToken();
+
   if (isSupabaseConfigured) {
     try {
       const avatarUrl = getDeterministicHeroAvatar(email);
@@ -356,6 +387,11 @@ export async function signUpUser(
             region: region,
             role: "USER",
             avatar_url: avatarUrl,
+            receive_noticias: true,
+            receive_guias: true,
+            receive_codigos: true,
+            receive_promocionais: true,
+            unsubscribe_token: unsubscribeToken,
           },
         },
       });
@@ -388,6 +424,11 @@ export async function signUpUser(
     region,
     createdAt: new Date().toISOString().split("T")[0],
     avatarUrl: getDeterministicHeroAvatar(email),
+    receiveNoticias: true,
+    receiveGuias: true,
+    receiveCodigos: true,
+    receivePromocionais: true,
+    unsubscribeToken: unsubscribeToken,
   };
   localStorage.setItem("local_profiles", JSON.stringify([...localUsers, newUser]));
   return { success: true };
@@ -407,20 +448,29 @@ export async function updateProfileInDatabase(
     lastName?: string;
     birthDate?: string;
     region?: string;
+    receiveNoticias?: boolean;
+    receiveGuias?: boolean;
+    receiveCodigos?: boolean;
+    receivePromocionais?: boolean;
+    unsubscribeToken?: string;
   }
 ): Promise<{ success: boolean; error?: string; session?: UserSession }> {
   try {
     if (isSupabaseConfigured) {
-      const dbUpdates: any = {
-        character_name: updates.characterName,
-        character_id: updates.characterId,
-        kingdom_number: updates.kingdomNumber,
-        use_character_name: updates.useCharacterName,
-      };
-      if (updates.firstName) dbUpdates.first_name = updates.firstName;
-      if (updates.lastName) dbUpdates.last_name = updates.lastName;
-      if (updates.birthDate) dbUpdates.birth_date = updates.birthDate;
-      if (updates.region) dbUpdates.region = updates.region;
+      const dbUpdates: any = {};
+      if (updates.characterName !== undefined) dbUpdates.character_name = updates.characterName;
+      if (updates.characterId !== undefined) dbUpdates.character_id = updates.characterId;
+      if (updates.kingdomNumber !== undefined) dbUpdates.kingdom_number = updates.kingdomNumber;
+      if (updates.useCharacterName !== undefined) dbUpdates.use_character_name = updates.useCharacterName;
+      if (updates.firstName !== undefined) dbUpdates.first_name = updates.firstName;
+      if (updates.lastName !== undefined) dbUpdates.last_name = updates.lastName;
+      if (updates.birthDate !== undefined) dbUpdates.birth_date = updates.birthDate;
+      if (updates.region !== undefined) dbUpdates.region = updates.region;
+      if (updates.receiveNoticias !== undefined) dbUpdates.receive_noticias = updates.receiveNoticias;
+      if (updates.receiveGuias !== undefined) dbUpdates.receive_guias = updates.receiveGuias;
+      if (updates.receiveCodigos !== undefined) dbUpdates.receive_codigos = updates.receiveCodigos;
+      if (updates.receivePromocionais !== undefined) dbUpdates.receive_promocionais = updates.receivePromocionais;
+      if (updates.unsubscribeToken !== undefined) dbUpdates.unsubscribe_token = updates.unsubscribeToken;
 
       const queryField = userId.includes("@") ? "email" : "id";
       const { error } = await supabase
@@ -434,32 +484,49 @@ export async function updateProfileInDatabase(
     }
 
     // Atualiza na sessão local
-    const sessionUpdates: Partial<UserSession> = {
-      characterName: updates.characterName,
-      characterId: updates.characterId,
-      kingdomNumber: updates.kingdomNumber,
-      useCharacterName: updates.useCharacterName,
-    };
+    const sessionUpdates: Partial<UserSession> = {};
+    if (updates.characterName !== undefined) sessionUpdates.characterName = updates.characterName;
+    if (updates.characterId !== undefined) sessionUpdates.characterId = updates.characterId;
+    if (updates.kingdomNumber !== undefined) sessionUpdates.kingdomNumber = updates.kingdomNumber;
+    if (updates.useCharacterName !== undefined) sessionUpdates.useCharacterName = updates.useCharacterName;
+    if (updates.firstName !== undefined) sessionUpdates.firstName = updates.firstName;
+    if (updates.lastName !== undefined) sessionUpdates.lastName = updates.lastName;
+    if (updates.birthDate !== undefined) sessionUpdates.birthDate = updates.birthDate;
+    if (updates.region !== undefined) sessionUpdates.region = updates.region;
+    if (updates.receiveNoticias !== undefined) sessionUpdates.receiveNoticias = updates.receiveNoticias;
+    if (updates.receiveGuias !== undefined) sessionUpdates.receiveGuias = updates.receiveGuias;
+    if (updates.receiveCodigos !== undefined) sessionUpdates.receiveCodigos = updates.receiveCodigos;
+    if (updates.receivePromocionais !== undefined) sessionUpdates.receivePromocionais = updates.receivePromocionais;
+    if (updates.unsubscribeToken !== undefined) sessionUpdates.unsubscribeToken = updates.unsubscribeToken;
 
     if (isSupabaseConfigured) {
       try {
         const queryField = userId.includes("@") ? "email" : "id";
         const { data: profile } = await supabase
           .from("profiles")
-          .select("id")
+          .select("id, unsubscribe_token")
           .eq(queryField, userId)
           .single();
         if (profile) {
           sessionUpdates.id = profile.id;
+          if (profile.unsubscribe_token) {
+            sessionUpdates.unsubscribeToken = profile.unsubscribe_token;
+          }
         }
       } catch (e) {
-        console.error("Erro ao enriquecer sessão com id:", e);
+        console.error("Erro ao enriquecer sessão com id/token:", e);
       }
     }
-    if (updates.firstName) sessionUpdates.firstName = updates.firstName;
-    if (updates.lastName) sessionUpdates.lastName = updates.lastName;
-    if (updates.birthDate) sessionUpdates.birthDate = updates.birthDate;
-    if (updates.region) sessionUpdates.region = updates.region;
+
+    // Fallback Local Storage
+    const stored = localStorage.getItem("local_profiles");
+    if (stored) {
+      const localProfiles = JSON.parse(stored);
+      const updatedLocal = localProfiles.map((p: any) =>
+        p.email === userId || p.id === userId ? { ...p, ...sessionUpdates } : p
+      );
+      localStorage.setItem("local_profiles", JSON.stringify(updatedLocal));
+    }
 
     const updatedSession = updateSessionProfile(sessionUpdates);
     if (updatedSession) {

@@ -5,6 +5,7 @@ import {
   generateArticleEmail,
   generateNewsEmail,
   generateCodeEmail,
+  generatePromotionalEmail,
 } from "@/lib/mailMarketing/templates";
 import { sendMailMarketing } from "@/lib/mailMarketing/mailer";
 import {
@@ -12,6 +13,8 @@ import {
   ArticleMailData,
   NewsMailData,
   CodeMailData,
+  PromotionalMailData,
+  RecipientInfo,
 } from "@/lib/mailMarketing/types";
 
 export const dynamic = "force-dynamic";
@@ -40,43 +43,77 @@ export async function POST(request: Request) {
       );
     }
 
-    let recipients: string[] = Array.isArray(payload.recipients) ? payload.recipients : [];
+    let recipientsInfo: RecipientInfo[] = Array.isArray(payload.recipientsInfo)
+      ? payload.recipientsInfo
+      : [];
 
-    // Se destinatários não foram passados diretamente pelo front-end autenticado, busca no banco
-    if (recipients.length === 0 && isSupabaseConfigured) {
+    // Se for envio de teste direcionado (ex: teste do admin)
+    if (payload.testRecipient) {
+      const cleanTest = payload.testRecipient.trim().toLowerCase();
+      recipientsInfo = [{ email: cleanTest, unsubscribeToken: "demo-test-token" }];
+    } else if (recipientsInfo.length === 0 && Array.isArray(payload.recipients) && payload.recipients.length > 0) {
+      recipientsInfo = payload.recipients.map((em) => ({ email: em }));
+    } else if (recipientsInfo.length === 0 && isSupabaseConfigured) {
+      // FILTRAGEM RIGOROSA NO BANCO DE DADOS DE ACORDO COM A CATEGORIA DO DISPARO
       try {
         const client = getSupabaseServerClient();
-        const { data: profiles, error: dbError } = await client
+        let query = client
           .from("profiles")
-          .select("email")
+          .select("email, unsubscribe_token, receive_noticias, receive_guias, receive_codigos, receive_promocionais")
           .not("email", "is", null);
 
+        // Aplica o filtro de opt-in de acordo com o tipo
+        switch (payload.type) {
+          case "noticia":
+            query = query.neq("receive_noticias", false);
+            break;
+          case "artigo":
+            query = query.neq("receive_guias", false);
+            break;
+          case "codigo":
+            query = query.neq("receive_codigos", false);
+            break;
+          case "promocional":
+            query = query.neq("receive_promocionais", false);
+            break;
+        }
+
+        const { data: profiles, error: dbError } = await query;
+
         if (dbError) {
-          console.error("[Mail Marketing] Erro ao buscar perfis no banco:", dbError);
+          console.error("[Mail Marketing] Erro ao buscar perfis filtrados no banco:", dbError);
         } else if (profiles && profiles.length > 0) {
-          recipients = profiles
-            .map((p: any) => p.email)
-            .filter((email: any): email is string => Boolean(email && typeof email === "string" && email.includes("@")));
+          recipientsInfo = profiles
+            .filter((p: any) => Boolean(p.email && typeof p.email === "string" && p.email.includes("@")))
+            .map((p: any) => ({
+              email: p.email.trim().toLowerCase(),
+              unsubscribeToken: p.unsubscribe_token || undefined,
+            }));
         }
       } catch (dbErr) {
         console.error("[Mail Marketing] Exceção ao consultar Supabase profiles no servidor:", dbErr);
       }
     }
 
-    console.log(`[Mail Marketing] Destinatários identificados para envio (${recipients.length}):`, recipients);
+    // Fallback se estiver em modo teste/local e não houver destinatários
+    if (recipientsInfo.length === 0 && !isSupabaseConfigured) {
+      recipientsInfo = [{ email: "admin@lastasylum.br", unsubscribeToken: "demo-admin-token" }];
+    }
 
-    if (recipients.length === 0) {
+    console.log(`[Mail Marketing] Destinatários filtrados (${recipientsInfo.length}) para o tipo '${payload.type}':`, recipientsInfo.map(r => r.email));
+
+    if (recipientsInfo.length === 0) {
       return NextResponse.json(
         {
           success: false,
-          error: "Nenhum usuário cadastrado com e-mail válido foi encontrado para receber o disparo.",
+          error: "Nenhum usuário com permissão ativa para esta categoria de e-mail foi encontrado.",
           recipientCount: 0,
         },
         { status: 400 }
       );
     }
 
-    // Renderiza o template de acordo com a regra de negócio do tipo de dado
+    // Renderiza o template de acordo com o tipo de mensagem
     let emailResult: { subject: string; html: string; text: string };
 
     switch (payload.type) {
@@ -84,7 +121,7 @@ export async function POST(request: Request) {
         const articleData = payload.data as ArticleMailData;
         if (!articleData.title || !articleData.slug) {
           return NextResponse.json(
-            { success: false, error: "Dados incompletos para envio de Artigo." },
+            { success: false, error: "Dados incompletos para envio de Artigo/Guia." },
             { status: 400 }
           );
         }
@@ -116,6 +153,18 @@ export async function POST(request: Request) {
         break;
       }
 
+      case "promocional": {
+        const promoData = payload.data as PromotionalMailData;
+        if (!promoData.title) {
+          return NextResponse.json(
+            { success: false, error: "Título é obrigatório para envio Promocional." },
+            { status: 400 }
+          );
+        }
+        emailResult = generatePromotionalEmail(promoData, payload.siteUrl);
+        break;
+      }
+
       default:
         return NextResponse.json(
           { success: false, error: `Tipo de publicação '${payload.type}' não suportado.` },
@@ -123,12 +172,13 @@ export async function POST(request: Request) {
         );
     }
 
-    // Dispara os e-mails
+    // Dispara os e-mails com os tokens individuais
     const sendResult = await sendMailMarketing({
       subject: emailResult.subject,
       html: emailResult.html,
       text: emailResult.text,
-      recipients,
+      recipientsInfo,
+      siteUrl: payload.siteUrl,
       testOnly: payload.testOnly,
     });
 

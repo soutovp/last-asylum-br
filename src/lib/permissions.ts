@@ -106,6 +106,13 @@ export const ADMIN_PAGES: AdminPageDefinition[] = [
     allowedRoles: ["R", "E"],
   },
   {
+    id: "mail-marketing",
+    label: "Mail Marketing",
+    icon: "✉️",
+    description: "Criação de comunicados, campanhas de e-mail e disparos segmentados por categoria.",
+    allowedRoles: ["ADM", "SUPER"],
+  },
+  {
     id: "usuarios",
     label: "Gestão de Usuários",
     icon: "👑",

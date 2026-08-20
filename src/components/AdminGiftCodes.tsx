@@ -66,38 +66,23 @@ export default function AdminGiftCodes() {
         // Cadastrar
         await supabase.from("gift_codes").insert([payload]);
 
-        // Disparo assíncrono de E-mail Marketing para novo código
+        // Disparo assíncrono de E-mail Marketing para novo código com opt-in de códigos
         if (notifyEmail) {
-          (async () => {
-            try {
-              let recipients: string[] = [];
-              const { data: profiles } = await supabase.from("profiles").select("email");
-              if (profiles && profiles.length > 0) {
-                recipients = profiles
-                  .map((p: any) => p.email)
-                  .filter((em: any): em is string => Boolean(em && typeof em === "string" && em.includes("@")));
-              }
-
-              const currentOrigin = typeof window !== "undefined" ? window.location.origin : undefined;
-              fetch("/api/mail-marketing/send", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  type: "codigo",
-                  data: {
-                    code: formattedCode,
-                    rewards: formattedRewards,
-                  },
-                  recipients,
-                  siteUrl: currentOrigin,
-                }),
-              }).catch((err) => {
-                console.warn("[Mail Marketing Code Trigger Warning]:", err);
-              });
-            } catch (mailErr) {
-              console.warn("[Mail Marketing Code Exception Caught]:", mailErr);
-            }
-          })();
+          const currentOrigin = typeof window !== "undefined" ? window.location.origin : undefined;
+          fetch("/api/mail-marketing/send", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              type: "codigo",
+              data: {
+                code: formattedCode,
+                rewards: formattedRewards,
+              },
+              siteUrl: currentOrigin,
+            }),
+          }).catch((err) => {
+            console.warn("[Mail Marketing Code Trigger Warning]:", err);
+          });
         }
       }
       resetForm();

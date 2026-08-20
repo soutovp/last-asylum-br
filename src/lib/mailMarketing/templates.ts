@@ -1,4 +1,4 @@
-import { ArticleMailData, NewsMailData, CodeMailData } from "./types";
+import { ArticleMailData, NewsMailData, CodeMailData, PromotionalMailData } from "./types";
 
 const DEFAULT_SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://lastasylumbr.com.br";
 const LOGO_URL = "https://res.cloudinary.com/orrs3pvy/image/upload/v1787162698/last-asylum-br-logo_frsehl.png";
@@ -34,9 +34,9 @@ export function smartTruncate(text: string, maxLength: number = 360): string {
 }
 
 /**
- * Normaliza e sanitiza HTML rico de notícias para compatibilidade máxima com clientes de e-mail
+ * Normaliza e sanitiza HTML rico para compatibilidade máxima com clientes de e-mail
  */
-function formatEmailHtmlContent(rawHtml: string): string {
+export function formatEmailHtmlContent(rawHtml: string): string {
   if (!rawHtml) return "";
   return rawHtml
     .replace(/<p>/gi, '<p style="margin: 0 0 16px 0; font-size: 14px; line-height: 1.7; color: #cbd5e1;">')
@@ -52,19 +52,27 @@ function formatEmailHtmlContent(rawHtml: string): string {
 
 /**
  * Layout base responsivo do e-mail com a identidade visual do Last Asylum BR
+ * e rodapé obrigatório com link de descadastramento (Unsubscribe seguro por token)
  */
 export function renderBaseLayout({
   title,
   preheader,
   bodyHtml,
   siteUrl = DEFAULT_SITE_URL,
+  unsubscribeToken,
 }: {
   title: string;
   preheader?: string;
   bodyHtml: string;
   siteUrl?: string;
+  unsubscribeToken?: string;
 }): string {
   const cleanSiteUrl = (siteUrl || DEFAULT_SITE_URL).replace(/\/+$/, "");
+
+  // Link seguro de descadastro
+  const unsubscribeUrl = unsubscribeToken
+    ? `${cleanSiteUrl}/unsubscribe/${unsubscribeToken}`
+    : `{{UNSUBSCRIBE_LINK}}`;
 
   // Preheader space buffer para evitar vazamento de textos do rodapé na pré-visualização da caixa de entrada
   const preheaderSpacer = "&zwnj;&nbsp;".repeat(25);
@@ -162,8 +170,24 @@ export function renderBaseLayout({
                     </p>
                   </td>
                 </tr>
+
+                <!-- OPÇÃO DE DESCADASTRAMENTO (UNSUBSCRIBE OBRIGATÓRIO) -->
                 <tr>
-                  <td align="center">
+                  <td align="center" style="padding-top: 14px; padding-bottom: 12px; border-top: 1px dashed #1e293b;">
+                    <p style="margin: 0; font-size: 11px; color: #64748b; line-height: 1.5;">
+                      Você está recebendo este e-mail conforme suas preferências no Last Asylum BR.<br />
+                      Para alterar o que você recebe ou cancelar envios, acesse:
+                    </p>
+                    <div style="margin-top: 6px;">
+                      <a href="${unsubscribeUrl}" target="_blank" rel="noopener noreferrer" style="color: #f87171; text-decoration: underline; font-size: 11px; font-weight: 700;">
+                        Descadastrar ou Gerenciar Minhas Preferências de E-mail
+                      </a>
+                    </div>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td align="center" style="padding-top: 8px;">
                     <p style="margin: 0; font-size: 10px; color: #475569; letter-spacing: 0.5px;">
                       © ${new Date().getFullYear()} Last Asylum BR. Todos os direitos reservados.
                     </p>
@@ -184,9 +208,12 @@ export function renderBaseLayout({
 
 /**
  * 1. TEMPLATE PARA ARTIGO (GUIA DE SOBREVIVÊNCIA / ESTRATÉGIA)
- * Regra: Contém apenas os parágrafos iniciais (truncate inteligente) e botão "Leia Mais"
  */
-export function generateArticleEmail(data: ArticleMailData, siteUrl = DEFAULT_SITE_URL): { subject: string; html: string; text: string } {
+export function generateArticleEmail(
+  data: ArticleMailData,
+  siteUrl = DEFAULT_SITE_URL,
+  unsubscribeToken?: string
+): { subject: string; html: string; text: string } {
   const cleanBase = (siteUrl || DEFAULT_SITE_URL).replace(/\/+$/, "");
   const cleanSlug = (data.slug || "").replace(/^\/+/, "");
   const articleUrl = `${cleanBase}/guias/${cleanSlug}`;
@@ -196,7 +223,7 @@ export function generateArticleEmail(data: ArticleMailData, siteUrl = DEFAULT_SI
   const subject = `📖 Novo Artigo: ${data.title} - Last Asylum BR`;
 
   const bodyHtml = `
-    <!-- BADGE DE CATEGORIA (CENTRALIZADO VERTICALMENTE) -->
+    <!-- BADGE DE CATEGORIA -->
     <table role="presentation" border="0" cellpadding="0" cellspacing="0" style="margin-bottom: 16px;">
       <tr>
         <td align="center" style="background-color: rgba(0, 255, 136, 0.12); border: 1px solid #00ff88; border-radius: 20px; padding: 6px 14px; vertical-align: middle; text-align: center;">
@@ -214,7 +241,7 @@ export function generateArticleEmail(data: ArticleMailData, siteUrl = DEFAULT_SI
 
     ${
       data.imageUrl
-        ? `<!-- IMAGEM DE DESTAQUE COM CONTAINER RESPONSIVO -->
+        ? `<!-- IMAGEM DE DESTAQUE -->
         <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 20px;">
           <tr>
             <td style="border-radius: 12px; overflow: hidden; border: 1px solid #1e293b; background-color: #0b0f19;">
@@ -232,7 +259,7 @@ export function generateArticleEmail(data: ArticleMailData, siteUrl = DEFAULT_SI
       </p>
     </div>
 
-    <!-- BOTÃO BULLETPROOF LEIA MAIS (CENTRALIZADO VERTICALMENTE E IMUNE A DARK MODE) -->
+    <!-- BOTÃO LEIA MAIS -->
     <table role="presentation" border="0" cellpadding="0" cellspacing="0" style="margin: 28px auto 8px auto;">
       <tr>
         <td align="center" bgcolor="#00ff88" style="background-color: #00ff88; border-radius: 10px; text-align: center; vertical-align: middle; padding: 0;">
@@ -249,18 +276,22 @@ export function generateArticleEmail(data: ArticleMailData, siteUrl = DEFAULT_SI
     preheader: `Confira o novo artigo: ${data.title}`,
     bodyHtml,
     siteUrl,
+    unsubscribeToken,
   });
 
-  const text = `${data.title}\n\n${truncatedText}\n\nLeia o artigo completo em: ${articleUrl}`;
+  const text = `${data.title}\n\n${truncatedText}\n\nLeia o artigo completo em: ${articleUrl}\n\nDescadastrar: ${siteUrl}/unsubscribe/${unsubscribeToken || ""}`;
 
   return { subject, html, text };
 }
 
 /**
  * 2. TEMPLATE PARA NOTÍCIA (ATUALIZAÇÕES E PATCH NOTES)
- * Regra: Contém a notícia completa
  */
-export function generateNewsEmail(data: NewsMailData, siteUrl = DEFAULT_SITE_URL): { subject: string; html: string; text: string } {
+export function generateNewsEmail(
+  data: NewsMailData,
+  siteUrl = DEFAULT_SITE_URL,
+  unsubscribeToken?: string
+): { subject: string; html: string; text: string } {
   const cleanBase = (siteUrl || DEFAULT_SITE_URL).replace(/\/+$/, "");
   const cleanSlug = (data.slug || "").replace(/^\/+/, "");
   const newsUrl = `${cleanBase}/noticias/${cleanSlug}`;
@@ -268,7 +299,6 @@ export function generateNewsEmail(data: NewsMailData, siteUrl = DEFAULT_SITE_URL
   const authorInfo = data.authorName ? ` • POR ${data.authorName.toUpperCase()}` : "";
   const subject = `📢 Notícia: ${data.title} - Last Asylum BR`;
 
-  // Sanitiza e formata todo o HTML rico da notícia com estilos inline consistentes
   const safeContent = formatEmailHtmlContent(data.content || (data.summary ? `<p>${data.summary}</p>` : ""));
 
   const bodyHtml = `
@@ -290,7 +320,7 @@ export function generateNewsEmail(data: NewsMailData, siteUrl = DEFAULT_SITE_URL
 
     ${
       data.imageUrl
-        ? `<!-- IMAGEM DE DESTAQUE COM CONTAINER RESPONSIVO -->
+        ? `<!-- IMAGEM DE DESTAQUE -->
         <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 20px;">
           <tr>
             <td style="border-radius: 12px; overflow: hidden; border: 1px solid #1e293b; background-color: #0b0f19;">
@@ -306,12 +336,12 @@ export function generateNewsEmail(data: NewsMailData, siteUrl = DEFAULT_SITE_URL
       ${safeContent}
     </div>
 
-    <!-- BOTÃO BULLETPROOF VER NO PORTAL -->
+    <!-- BOTÃO VER NO PORTAL -->
     <table role="presentation" border="0" cellpadding="0" cellspacing="0" style="margin: 28px auto 8px auto; border-top: 1px solid #1e293b; padding-top: 24px; width: 100%;">
       <tr>
         <td align="center" bgcolor="#38bdf8" style="background-color: #38bdf8; border-radius: 10px; text-align: center; vertical-align: middle; padding: 0;">
           <a href="${newsUrl}" target="_blank" rel="noopener noreferrer" class="mobile-btn" style="background-color: #38bdf8; border: 1px solid #38bdf8; border-radius: 10px; color: #080c14 !important; display: block; font-family: Arial, Helvetica, sans-serif; font-size: 14px; font-weight: 800; padding: 14px 28px; text-decoration: none !important; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; line-height: 16px; -webkit-text-size-adjust: none;">
-            <span style="color: #080c14 !important; text-decoration: none !important; font-weight: 800; font-size: 14px; line-height: 16px;">Ver Discussão no Portal &rarr;</span>
+            <span style="color: #080c14 !important; text-decoration: none !important; font-weight: 800; font-size: 14px; line-height: 16px;">Ver Notícia Completa no Portal &rarr;</span>
           </a>
         </td>
       </tr>
@@ -323,18 +353,22 @@ export function generateNewsEmail(data: NewsMailData, siteUrl = DEFAULT_SITE_URL
     preheader: `Novidade no Last Asylum: ${data.title}`,
     bodyHtml,
     siteUrl,
+    unsubscribeToken,
   });
 
-  const text = `${data.title}\n\n${stripHtml(data.content || data.summary || "")}\n\nConfira no portal: ${newsUrl}`;
+  const text = `${data.title}\n\n${stripHtml(data.content || data.summary || "")}\n\nConfira no portal: ${newsUrl}\n\nDescadastrar: ${siteUrl}/unsubscribe/${unsubscribeToken || ""}`;
 
   return { subject, html, text };
 }
 
 /**
  * 3. TEMPLATE PARA CÓDIGO (GIFT CODE / CÓDIGO DE RECOMPENSA)
- * Regra: O código deve ser envelopado em tags de formatação adequadas (<pre> e <code>) para legibilidade técnica
  */
-export function generateCodeEmail(data: CodeMailData, siteUrl = DEFAULT_SITE_URL): { subject: string; html: string; text: string } {
+export function generateCodeEmail(
+  data: CodeMailData,
+  siteUrl = DEFAULT_SITE_URL,
+  unsubscribeToken?: string
+): { subject: string; html: string; text: string } {
   const cleanBase = (siteUrl || DEFAULT_SITE_URL).replace(/\/+$/, "");
   const codesUrl = `${cleanBase}/codigos`;
   const subject = `🎁 Novo Código de Recompensa: ${data.code} - Last Asylum BR`;
@@ -360,7 +394,7 @@ export function generateCodeEmail(data: CodeMailData, siteUrl = DEFAULT_SITE_URL
       Um novo código de recompensa foi adicionado ao portal. Copie e resgate imediatamente dentro do jogo para coletar seus itens:
     </p>
 
-    <!-- BLOCO DE CÓDIGO TÉCNICO (<pre><code>) COM COPIABILIDADE OTIMIZADA -->
+    <!-- BLOCO DE CÓDIGO TÉCNICO -->
     <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 24px;">
       <tr>
         <td align="center" style="background-color: #05080e; border: 2px dashed #00ff88; border-radius: 12px; padding: 20px 16px; text-align: center;">
@@ -399,7 +433,7 @@ export function generateCodeEmail(data: CodeMailData, siteUrl = DEFAULT_SITE_URL
       </ol>
     </div>
 
-    <!-- BOTÃO BULLETPROOF VER TODOS OS CÓDIGOS -->
+    <!-- BOTÃO VER TODOS OS CÓDIGOS -->
     <table role="presentation" border="0" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
       <tr>
         <td align="center" bgcolor="#00ff88" style="background-color: #00ff88; border-radius: 10px; text-align: center; vertical-align: middle; padding: 0;">
@@ -416,9 +450,87 @@ export function generateCodeEmail(data: CodeMailData, siteUrl = DEFAULT_SITE_URL
     preheader: `Novo código disponível: ${data.code} - Resgate suas recompensas!`,
     bodyHtml,
     siteUrl,
+    unsubscribeToken,
   });
 
-  const text = `Novo Código de Recompensa: ${data.code}\n\nRecompensas: ${data.rewards}\n\nResgate no jogo ou confira em: ${codesUrl}`;
+  const text = `Novo Código de Recompensa: ${data.code}\n\nRecompensas: ${data.rewards}\n\nResgate no jogo ou confira em: ${codesUrl}\n\nDescadastrar: ${siteUrl}/unsubscribe/${unsubscribeToken || ""}`;
+
+  return { subject, html, text };
+}
+
+/**
+ * 4. TEMPLATE PARA ENVIOS PROMOCIONAIS & CAMPANHAS PERSONALIZADAS
+ */
+export function generatePromotionalEmail(
+  data: PromotionalMailData,
+  siteUrl = DEFAULT_SITE_URL,
+  unsubscribeToken?: string
+): { subject: string; html: string; text: string } {
+  const cleanBase = (siteUrl || DEFAULT_SITE_URL).replace(/\/+$/, "");
+  const subject = data.subject || `🔥 ${data.title} - Last Asylum BR`;
+  const authorInfo = data.authorName ? ` • POR ${data.authorName.toUpperCase()}` : "";
+  const safeContent = formatEmailHtmlContent(data.content || (data.summary ? `<p>${data.summary}</p>` : ""));
+
+  const bodyHtml = `
+    <!-- BADGE DE PROMOÇÃO / COMUNICADO -->
+    <table role="presentation" border="0" cellpadding="0" cellspacing="0" style="margin-bottom: 16px;">
+      <tr>
+        <td align="center" style="background-color: rgba(239, 68, 68, 0.12); border: 1px solid #ef4444; border-radius: 20px; padding: 6px 14px; vertical-align: middle; text-align: center;">
+          <span style="color: #f87171; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; font-family: Arial, Helvetica, sans-serif; line-height: 14px; display: inline-block; vertical-align: middle;">
+            COMUNICADO PROMOCIONAL${authorInfo}
+          </span>
+        </td>
+      </tr>
+    </table>
+
+    <!-- TÍTULO -->
+    <h1 style="margin: 0 0 16px 0; font-size: 22px; font-weight: 800; color: #f8fafc; line-height: 1.35;">
+      ${data.title}
+    </h1>
+
+    ${
+      data.imageUrl
+        ? `<!-- IMAGEM DE DESTAQUE -->
+        <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin-bottom: 20px;">
+          <tr>
+            <td style="border-radius: 12px; overflow: hidden; border: 1px solid #1e293b; background-color: #0b0f19;">
+              <img src="${data.imageUrl}" alt="${data.title}" width="544" style="display: block; width: 100%; max-width: 544px; height: auto; border: 0;" />
+            </td>
+          </tr>
+        </table>`
+        : ""
+    }
+
+    <!-- CORPO RICO FORMATADO -->
+    <div style="font-size: 14px; line-height: 1.7; color: #cbd5e1; margin-bottom: 28px; word-break: break-word;">
+      ${safeContent}
+    </div>
+
+    ${
+      data.buttonUrl && data.buttonText
+        ? `<!-- BOTÃO DE AÇÃO / CTA -->
+        <table role="presentation" border="0" cellpadding="0" cellspacing="0" style="margin: 28px auto 8px auto; width: 100%;">
+          <tr>
+            <td align="center" bgcolor="#00ff88" style="background-color: #00ff88; border-radius: 10px; text-align: center; vertical-align: middle; padding: 0;">
+              <a href="${data.buttonUrl}" target="_blank" rel="noopener noreferrer" class="mobile-btn" style="background-color: #00ff88; border: 1px solid #00ff88; border-radius: 10px; color: #080c14 !important; display: block; font-family: Arial, Helvetica, sans-serif; font-size: 14px; font-weight: 800; padding: 14px 32px; text-decoration: none !important; text-transform: uppercase; letter-spacing: 0.5px; text-align: center; line-height: 16px; -webkit-text-size-adjust: none;">
+                <span style="color: #080c14 !important; text-decoration: none !important; font-weight: 800; font-size: 14px; line-height: 16px;">${data.buttonText} &rarr;</span>
+              </a>
+            </td>
+          </tr>
+        </table>`
+        : ""
+    }
+  `;
+
+  const html = renderBaseLayout({
+    title: subject,
+    preheader: data.summary || `Comunicado oficial: ${data.title}`,
+    bodyHtml,
+    siteUrl: cleanBase,
+    unsubscribeToken,
+  });
+
+  const text = `${data.title}\n\n${stripHtml(data.content || data.summary || "")}\n\nDescadastrar: ${cleanBase}/unsubscribe/${unsubscribeToken || ""}`;
 
   return { subject, html, text };
 }

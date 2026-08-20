@@ -537,52 +537,26 @@ export default function AdminArticleEditor({
       if (status === "public" && notifyEmail) {
         const targetSlug = slug || finalSlug;
         const currentOrigin = typeof window !== "undefined" ? window.location.origin : undefined;
-        // Executa busca dos inscritos e disparo em background
-        (async () => {
-          try {
-            let recipients: string[] = [];
-            if (isSupabaseConfigured) {
-              const { supabase } = await import("@/lib/supabase");
-              const { data: profiles } = await supabase.from("profiles").select("email");
-              if (profiles && profiles.length > 0) {
-                recipients = profiles
-                  .map((p: any) => p.email)
-                  .filter((em: any): em is string => Boolean(em && typeof em === "string" && em.includes("@")));
-              }
-            } else {
-              const stored = localStorage.getItem("local_profiles");
-              if (stored) {
-                const parsed = JSON.parse(stored);
-                recipients = parsed
-                  .map((p: any) => p.email)
-                  .filter((em: any): em is string => Boolean(em && typeof em === "string" && em.includes("@")));
-              }
-            }
-
-            fetch("/api/mail-marketing/send", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                type: articleType === "guia" ? "artigo" : "noticia",
-                data: {
-                  title,
-                  summary,
-                  content: finalContent,
-                  slug: targetSlug,
-                  imageUrl,
-                  category: finalCategory,
-                  authorName: session?.firstName || "Last Asylum BR",
-                },
-                recipients,
-                siteUrl: currentOrigin,
-              }),
-            }).catch((err) => {
-              console.warn("[Mail Marketing Trigger Warning]:", err);
-            });
-          } catch (mailErr) {
-            console.warn("[Mail Marketing Exception Caught]:", mailErr);
-          }
-        })();
+        // Dispara requisição delegando a filtragem de opt-in e tokens de unsubscribe para a API
+        fetch("/api/mail-marketing/send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: articleType === "guia" ? "artigo" : "noticia",
+            data: {
+              title,
+              summary,
+              content: finalContent,
+              slug: targetSlug,
+              imageUrl,
+              category: finalCategory,
+              authorName: session?.firstName || "Last Asylum BR",
+            },
+            siteUrl: currentOrigin,
+          }),
+        }).catch((err) => {
+          console.warn("[Mail Marketing Trigger Warning]:", err);
+        });
       }
 
       onSave();

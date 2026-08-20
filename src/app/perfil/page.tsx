@@ -2,6 +2,7 @@
 
 import { useState, useEffect, FormEvent } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import { getSavedSession, logoutAdmin, updateProfileInDatabase, UserSession } from "@/lib/auth";
@@ -22,6 +23,12 @@ export default function PerfilPage() {
   const [lastName, setLastName] = useState("");
   const [region, setRegion] = useState("");
   
+  // Preferências de Mail Marketing (Padrão: true)
+  const [receiveNoticias, setReceiveNoticias] = useState(true);
+  const [receiveGuias, setReceiveGuias] = useState(true);
+  const [receiveCodigos, setReceiveCodigos] = useState(true);
+  const [receivePromocionais, setReceivePromocionais] = useState(true);
+
   const [updating, setUpdating] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
@@ -38,6 +45,10 @@ export default function PerfilPage() {
       setCharacterId(saved.characterId || "");
       setKingdomNumber(saved.kingdomNumber !== undefined ? saved.kingdomNumber : "");
       setUseCharacterName(!!saved.useCharacterName);
+      setReceiveNoticias(saved.receiveNoticias !== false);
+      setReceiveGuias(saved.receiveGuias !== false);
+      setReceiveCodigos(saved.receiveCodigos !== false);
+      setReceivePromocionais(saved.receivePromocionais !== false);
     }
     setLoading(false);
   }, [router]);
@@ -64,6 +75,10 @@ export default function PerfilPage() {
       characterId,
       kingdomNumber: kingdomNumber === "" ? undefined : Number(kingdomNumber),
       useCharacterName,
+      receiveNoticias,
+      receiveGuias,
+      receiveCodigos,
+      receivePromocionais,
     };
 
     try {
@@ -305,6 +320,128 @@ export default function PerfilPage() {
                         className="w-full h-10 px-4 text-xs font-medium text-white bg-slate-950 rounded-xl border border-slate-800 focus:outline-none focus:border-[#00ff88] transition-colors"
                       />
                     </div>
+                  </div>
+
+                  {/* SEÇÃO C: PREFERÊNCIAS DE E-MAIL (MAIL MARKETING) */}
+                  <div className="space-y-4 p-4 rounded-2xl bg-slate-900/50 border border-slate-800/80">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-xs font-mono font-bold text-[#00ff88] uppercase tracking-wider flex items-center gap-1.5">
+                          <span>📬</span> Preferências de E-mail (Mail Marketing)
+                        </h4>
+                        <p className="text-[11px] text-slate-400 mt-0.5">
+                          Personalize exatamente o que deseja receber do portal em sua caixa de entrada.
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setReceiveNoticias(true);
+                            setReceiveGuias(true);
+                            setReceiveCodigos(true);
+                            setReceivePromocionais(true);
+                          }}
+                          className="text-[10px] font-mono text-[#00ff88] hover:underline"
+                        >
+                          Ativar Todos
+                        </button>
+                        <span className="text-slate-600 text-xs">|</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setReceiveNoticias(false);
+                            setReceiveGuias(false);
+                            setReceiveCodigos(false);
+                            setReceivePromocionais(false);
+                          }}
+                          className="text-[10px] font-mono text-slate-400 hover:text-white"
+                        >
+                          Desativar Todos
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                      
+                      {/* NOTÍCIAS */}
+                      <label className="p-3 rounded-xl bg-slate-950/80 border border-slate-800/80 hover:border-slate-700 flex items-start justify-between gap-3 cursor-pointer transition-all">
+                        <div>
+                          <span className="text-xs font-bold text-white block">📰 Notícias & Atualizações</span>
+                          <span className="text-[10px] text-slate-400 block mt-0.5 leading-tight">
+                            Patch notes, novidades e anúncios.
+                          </span>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={receiveNoticias}
+                          onChange={(e) => setReceiveNoticias(e.target.checked)}
+                          className="w-4 h-4 rounded border-slate-800 bg-slate-900 accent-[#00ff88] cursor-pointer mt-0.5"
+                        />
+                      </label>
+
+                      {/* GUIAS */}
+                      <label className="p-3 rounded-xl bg-slate-950/80 border border-slate-800/80 hover:border-slate-700 flex items-start justify-between gap-3 cursor-pointer transition-all">
+                        <div>
+                          <span className="text-xs font-bold text-white block">📖 Guias & Tutoriais</span>
+                          <span className="text-[10px] text-slate-400 block mt-0.5 leading-tight">
+                            Estratégias e tutoriais avançados.
+                          </span>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={receiveGuias}
+                          onChange={(e) => setReceiveGuias(e.target.checked)}
+                          className="w-4 h-4 rounded border-slate-800 bg-slate-900 accent-[#00ff88] cursor-pointer mt-0.5"
+                        />
+                      </label>
+
+                      {/* CÓDIGOS */}
+                      <label className="p-3 rounded-xl bg-slate-950/80 border border-slate-800/80 hover:border-slate-700 flex items-start justify-between gap-3 cursor-pointer transition-all">
+                        <div>
+                          <span className="text-xs font-bold text-white block">🎁 Códigos de Presente</span>
+                          <span className="text-[10px] text-slate-400 block mt-0.5 leading-tight">
+                            Novos Gift Codes com recompensas.
+                          </span>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={receiveCodigos}
+                          onChange={(e) => setReceiveCodigos(e.target.checked)}
+                          className="w-4 h-4 rounded border-slate-800 bg-slate-900 accent-[#00ff88] cursor-pointer mt-0.5"
+                        />
+                      </label>
+
+                      {/* PROMOCIONAIS */}
+                      <label className="p-3 rounded-xl bg-slate-950/80 border border-slate-800/80 hover:border-slate-700 flex items-start justify-between gap-3 cursor-pointer transition-all">
+                        <div>
+                          <span className="text-xs font-bold text-white block">🔥 Envios Promocionais</span>
+                          <span className="text-[10px] text-slate-400 block mt-0.5 leading-tight">
+                            Comunicados e eventos especiais.
+                          </span>
+                        </div>
+                        <input
+                          type="checkbox"
+                          checked={receivePromocionais}
+                          onChange={(e) => setReceivePromocionais(e.target.checked)}
+                          className="w-4 h-4 rounded border-slate-800 bg-slate-900 accent-[#00ff88] cursor-pointer mt-0.5"
+                        />
+                      </label>
+
+                    </div>
+
+                    {session.unsubscribeToken && (
+                      <div className="pt-2 text-[10px] font-mono text-slate-500 flex items-center justify-between">
+                        <span>Link de Descadastro Seguro:</span>
+                        <Link
+                          href={`/unsubscribe/${session.unsubscribeToken}`}
+                          target="_blank"
+                          className="text-cyan-400 hover:underline"
+                        >
+                          Visualizar Página Pública de Unsubscribe &rarr;
+                        </Link>
+                      </div>
+                    )}
                   </div>
 
                   <button

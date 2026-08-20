@@ -1,5 +1,7 @@
 import nodemailer from "nodemailer";
-import { SendMailResult } from "./types";
+import { RecipientInfo, SendMailResult } from "./types";
+
+const DEFAULT_SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://lastasylumbr.com.br";
 
 interface SmtpConfig {
   host: string;
@@ -51,33 +53,55 @@ export function createMailTransporter() {
 
 /**
  * Envia o e-mail de marketing individualmente para cada destinatário
- * Garantindo que cada usuário receba o e-mail diretamente com seu próprio endereço no campo 'To'
+ * Garantindo que cada usuário receba o e-mail diretamente com seu próprio endereço e seu token exclusivo de Unsubscribe
  */
 export async function sendMailMarketing({
   subject,
   html,
   text,
   recipients,
+  recipientsInfo,
+  siteUrl = DEFAULT_SITE_URL,
   testOnly = false,
 }: {
   subject: string;
   html: string;
   text: string;
-  recipients: string[];
+  recipients?: string[];
+  recipientsInfo?: RecipientInfo[];
+  siteUrl?: string;
   testOnly?: boolean;
 }): Promise<SendMailResult> {
   const config = getSmtpConfig();
+  const cleanSiteUrl = (siteUrl || DEFAULT_SITE_URL).replace(/\/+$/, "");
 
-  // Limpa e valida lista de destinatários (remove duplicados e e-mails inválidos)
-  const validRecipients = Array.from(
-    new Set(
-      recipients
-        .map((e) => (typeof e === "string" ? e.trim().toLowerCase() : ""))
-        .filter((e) => e.length > 3 && e.includes("@") && e.includes("."))
-    )
-  );
+  // Normaliza lista de destinatários com seus tokens
+  const targetMap = new Map<string, string>();
 
-  if (validRecipients.length === 0) {
+  if (recipientsInfo && recipientsInfo.length > 0) {
+    recipientsInfo.forEach((item) => {
+      const email = item.email.trim().toLowerCase();
+      if (email.length > 3 && email.includes("@") && email.includes(".")) {
+        targetMap.set(email, item.unsubscribeToken || "");
+      }
+    });
+  }
+
+  if (recipients && recipients.length > 0) {
+    recipients.forEach((item) => {
+      const email = item.trim().toLowerCase();
+      if (email.length > 3 && email.includes("@") && email.includes(".") && !targetMap.has(email)) {
+        targetMap.set(email, "");
+      }
+    });
+  }
+
+  const validTargets = Array.from(targetMap.entries()).map(([email, token]) => ({
+    email,
+    token,
+  }));
+
+  if (validTargets.length === 0) {
     console.warn("[Mail Marketing] Nenhum destinatário válido fornecido para envio.");
     return {
       success: false,
@@ -89,12 +113,12 @@ export async function sendMailMarketing({
   // MODO SIMULAÇÃO / AMBIENTE SEM CREDENCIAIS SMTP CONFIGURADAS
   if (!config || testOnly) {
     console.warn(
-      `[Mail Marketing - SIMULAÇÃO] Disparo simulado para ${validRecipients.length} usuário(s): [${validRecipients.join(", ")}]. Assunto: "${subject}"`
+      `[Mail Marketing - SIMULAÇÃO] Disparo simulado para ${validTargets.length} usuário(s): [${validTargets.map((t) => t.email).join(", ")}]. Assunto: "${subject}"`
     );
     return {
       success: true,
-      message: `Simulação concluída para ${validRecipients.length} destinatário(s). (SMTP não ativo ou modo teste).`,
-      recipientCount: validRecipients.length,
+      message: `Simulação concluída para ${validTargets.length} destinatário(s). (SMTP não ativo ou modo teste).`,
+      recipientCount: validTargets.length,
       simulated: true,
     };
   }
@@ -104,7 +128,7 @@ export async function sendMailMarketing({
     return {
       success: false,
       message: "Falha ao inicializar o transportador SMTP.",
-      recipientCount: validRecipients.length,
+      recipientCount: validTargets.length,
     };
   }
 
@@ -112,25 +136,39 @@ export async function sendMailMarketing({
     let successCount = 0;
     const errors: string[] = [];
 
-    // Envio individual em concorrência controlada (lotes de 5)
+    // Envio individual em concorrência controlada (lotes de 5 para evitar rate limit)
     const CHUNK_SIZE = 5;
-    for (let i = 0; i < validRecipients.length; i += CHUNK_SIZE) {
-      const chunk = validRecipients.slice(i, i + CHUNK_SIZE);
+    for (let i = 0; i < validTargets.length; i += CHUNK_SIZE) {
+      const chunk = validTargets.slice(i, i + CHUNK_SIZE);
       const results = await Promise.allSettled(
-        chunk.map(async (recipient) => {
+        chunk.map(async (target) => {
+          const userUnsubscribeUrl = target.token
+            ? `${cleanSiteUrl}/unsubscribe/${target.token}`
+            : `${cleanSiteUrl}/perfil`;
+
+          // Substitui dinamicamente as tags de unsubscribe para este usuário
+          const personalizedHtml = html
+            .replace(/\{\{UNSUBSCRIBE_LINK\}\}/g, userUnsubscribeUrl)
+            .replace(/\{\{UNSUBSCRIBE_TOKEN\}\}/g, target.token || "");
+
+          const personalizedText = text
+            .replace(/\{\{UNSUBSCRIBE_LINK\}\}/g, userUnsubscribeUrl)
+            .replace(/\{\{UNSUBSCRIBE_TOKEN\}\}/g, target.token || "");
+
           await transporter.sendMail({
             from: config.from,
-            to: recipient, // Enviado diretamente para a caixa do usuário cadastrado!
+            to: target.email,
             subject,
-            html,
-            text,
+            html: personalizedHtml,
+            text: personalizedText,
             replyTo: "contato@lastasylumbr.com.br",
             headers: {
               "X-Entity-Ref-ID": `lastasylum-marketing-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
               "Precedence": "bulk",
+              "List-Unsubscribe": `<${userUnsubscribeUrl}>`,
             },
           });
-          console.log(`[Mail Marketing] ✅ E-mail enviado com sucesso para: ${recipient}`);
+          console.log(`[Mail Marketing] ✅ E-mail enviado com sucesso para: ${target.email}`);
         })
       );
 
@@ -139,7 +177,7 @@ export async function sendMailMarketing({
         if (res.status === "fulfilled") {
           successCount++;
         } else {
-          const recipientEmail = chunk[j];
+          const recipientEmail = chunk[j].email;
           const errorMsg = res.reason instanceof Error ? res.reason.message : String(res.reason);
           console.error(`[Mail Marketing] ❌ Falha no envio para ${recipientEmail}:`, errorMsg);
           errors.push(`${recipientEmail}: ${errorMsg}`);
@@ -158,7 +196,7 @@ export async function sendMailMarketing({
 
     return {
       success: true,
-      message: `E-mails enviados com sucesso para ${successCount} de ${validRecipients.length} usuário(s).`,
+      message: `E-mails enviados com sucesso para ${successCount} de ${validTargets.length} usuário(s).`,
       recipientCount: successCount,
       simulated: false,
     };

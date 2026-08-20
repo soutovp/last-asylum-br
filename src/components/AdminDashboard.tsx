@@ -7,6 +7,7 @@ import AdminUserManagement from "./AdminUserManagement";
 import AdminArticleEditor, { ArticleData } from "./AdminArticleEditor";
 import AdminGiftCodes from "./AdminGiftCodes";
 import AdminVisualGuides from "./AdminVisualGuides";
+import AdminMailMarketing from "./AdminMailMarketing";
 import { canUserAccessPage, getAccessiblePagesForUser, ADMIN_PAGES } from "@/lib/permissions";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { compressImageToWebp } from "@/lib/imageCompression";
@@ -766,6 +767,11 @@ export default function AdminDashboard({
               {/* PÁGINA: GUIAS VISUAIS */}
               {currentPageId === "guias-visuais" && (
                 <AdminVisualGuides />
+              )}
+
+              {/* PÁGINA: MAIL MARKETING */}
+              {currentPageId === "mail-marketing" && (
+                <AdminMailMarketing session={session} />
               )}
 
               {/* PÁGINA: CONFIGURAÇÕES DE PERFIL */}

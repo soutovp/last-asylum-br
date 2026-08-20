@@ -1,4 +1,4 @@
-export type MailMarketingType = "artigo" | "noticia" | "codigo";
+export type MailMarketingType = "artigo" | "noticia" | "codigo" | "promocional";
 
 export interface ArticleMailData {
   title: string;
@@ -27,12 +27,30 @@ export interface CodeMailData {
   createdAt?: string;
 }
 
+export interface PromotionalMailData {
+  subject?: string;
+  title: string;
+  summary?: string;
+  content: string;
+  imageUrl?: string;
+  buttonText?: string;
+  buttonUrl?: string;
+  authorName?: string;
+}
+
+export interface RecipientInfo {
+  email: string;
+  unsubscribeToken?: string;
+}
+
 export interface MailMarketingPayload {
   type: MailMarketingType;
-  data: ArticleMailData | NewsMailData | CodeMailData;
+  data: ArticleMailData | NewsMailData | CodeMailData | PromotionalMailData;
   recipients?: string[];
+  recipientsInfo?: RecipientInfo[];
   siteUrl?: string;
   testOnly?: boolean;
+  testRecipient?: string;
 }
 
 export interface SendMailResult {
