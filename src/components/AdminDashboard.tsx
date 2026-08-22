@@ -39,6 +39,12 @@ export default function AdminDashboard({
   const [editorArticleId, setEditorArticleId] = useState<string | undefined>(undefined);
   const [editorType, setEditorType] = useState<"noticia" | "guia" | null>(null);
 
+  // Estados para Reenvio de E-mail Marketing
+  const [resendArticle, setResendArticle] = useState<ArticleData | null>(null);
+  const [resendTargetType, setResendTargetType] = useState<"todos" | "especifico">("todos");
+  const [specificEmail, setSpecificEmail] = useState("");
+  const [sendingResend, setSendingResend] = useState(false);
+
   // Carrega as permissões do backend Supabase ao iniciar no ambiente de produção
   useEffect(() => {
     if (isSupabaseConfigured) {
@@ -171,6 +177,55 @@ export default function AdminDashboard({
       setReloadTrigger((prev) => prev + 1);
     } catch (err: any) {
       alert("Erro ao excluir artigo: " + err.message);
+    }
+  };
+
+  const handleResendEmail = async () => {
+    if (!resendArticle) return;
+    
+    if (resendTargetType === "especifico" && (!specificEmail || !specificEmail.includes("@"))) {
+      alert("Por favor, forneça um endereço de e-mail de destino válido.");
+      return;
+    }
+
+    setSendingResend(true);
+    try {
+      const currentOrigin = typeof window !== "undefined" ? window.location.origin : undefined;
+      const res = await fetch("/api/mail-marketing/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: resendArticle.type === "guia" ? "artigo" : "noticia",
+          data: {
+            title: resendArticle.title,
+            summary: resendArticle.summary,
+            content: resendArticle.content,
+            slug: resendArticle.slug,
+            imageUrl: resendArticle.image_url,
+            category: resendArticle.category,
+            authorName: session?.firstName || "Last Asylum BR",
+          },
+          siteUrl: currentOrigin,
+          testRecipient: resendTargetType === "especifico" ? specificEmail.trim().toLowerCase() : undefined,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        alert(
+          data.simulated
+            ? `[Simulação] E-mail enviado com sucesso (SMTP inativo/Modo teste).`
+            : `E-mail enviado com sucesso para ${data.recipientCount} destinatário(s)!`
+        );
+        setResendArticle(null);
+        setSpecificEmail("");
+      } else {
+        alert("Erro no envio: " + (data.error || "Erro desconhecido"));
+      }
+    } catch (err: any) {
+      alert("Erro de conexão ao enviar e-mail: " + err.message);
+    } finally {
+      setSendingResend(false);
     }
   };
 
@@ -544,6 +599,12 @@ export default function AdminDashboard({
                                 Editar
                               </button>
                               <button
+                                onClick={() => setResendArticle(news)}
+                                className="px-3 py-1.5 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-400 text-xs font-bold border border-cyan-500/30 transition-colors flex items-center gap-1"
+                              >
+                                📧 E-mail
+                              </button>
+                              <button
                                 onClick={() => handleDeleteArticle(news.id || "")}
                                 className="px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-bold border border-red-500/30 transition-colors"
                               >
@@ -683,7 +744,7 @@ export default function AdminDashboard({
                                  URL: /guias/{guide.slug}
                               </a>
                             </div>
-                            <div className="flex items-center gap-2 self-end sm:self-center">
+                            <div className="flex items-center gap-2 self-end sm:self-center animate-in fade-in duration-200">
                               <button
                                 onClick={() => {
                                   setEditorType("guia");
@@ -693,6 +754,13 @@ export default function AdminDashboard({
                                 className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-colors"
                               >
                                 Editar
+                              </button>
+                              <button
+                                onClick={() => setResendArticle(guide)}
+                                className="px-3 py-1.5 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-400 text-xs font-bold border border-cyan-500/30 transition-colors flex items-center gap-1"
+                                title="Reenviar E-mail Marketing"
+                              >
+                                📧 E-mail
                               </button>
                               <button
                                 onClick={() => handleDeleteArticle(guide.id || "")}
@@ -1036,6 +1104,94 @@ export default function AdminDashboard({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL PARA REENVIO DE E-MAIL MARKETING */}
+      {resendArticle && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-md p-6 rounded-3xl bg-[#101623] border border-cyan-500/30 shadow-2xl relative space-y-4">
+            <div>
+              <h3 className="text-lg font-black text-white">Reenviar E-mail Marketing</h3>
+              <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                Você está prestes a disparar uma campanha para o artigo: <strong className="text-white">"{resendArticle.title}"</strong>.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <label className="block text-xs font-mono font-bold text-slate-300 uppercase tracking-wider">
+                Selecione o Destinatário:
+              </label>
+              
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="resendTarget"
+                    checked={resendTargetType === "todos"}
+                    onChange={() => setResendTargetType("todos")}
+                    className="accent-[#00ff88]"
+                  />
+                  <span>Todos os Inscritos da Base</span>
+                </label>
+
+                <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="resendTarget"
+                    checked={resendTargetType === "especifico"}
+                    onChange={() => setResendTargetType("especifico")}
+                    className="accent-[#00ff88]"
+                  />
+                  <span>E-mail de Teste Específico</span>
+                </label>
+              </div>
+
+              {resendTargetType === "especifico" && (
+                <div className="animate-in fade-in slide-in-from-top-1 duration-150">
+                  <label className="block text-[10px] font-mono font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                    Endereço de E-mail de Destino:
+                  </label>
+                  <input
+                    type="email"
+                    value={specificEmail}
+                    onChange={(e) => setSpecificEmail(e.target.value)}
+                    placeholder="exemplo@dominio.com"
+                    required
+                    className="w-full h-11 px-4 text-xs font-medium text-white bg-slate-900 rounded-xl border border-slate-800 focus:outline-none focus:border-[#00ff88]"
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={handleResendEmail}
+                disabled={sendingResend}
+                className="flex-1 py-2.5 rounded-xl bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-black text-xs transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
+              >
+                {sendingResend ? (
+                  <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <>
+                    <span>🚀</span>
+                    <span>Disparar E-mail</span>
+                  </>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setResendArticle(null);
+                  setSpecificEmail("");
+                }}
+                className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs"
+              >
+                Cancelar
+              </button>
+            </div>
           </div>
         </div>
       )}
