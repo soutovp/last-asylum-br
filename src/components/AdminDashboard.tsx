@@ -825,7 +825,10 @@ export default function AdminDashboard({
 
               {/* PÁGINA: GESTÃO DE USUÁRIOS */}
               {currentPageId === "usuarios" && (
-                <AdminUserManagement />
+                <AdminUserManagement
+                  session={session}
+                  onSessionUpdate={onSessionUpdate}
+                />
               )}
 
               {/* PÁGINA: CÓDIGOS DE RESGATE */}
