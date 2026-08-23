@@ -23,7 +23,7 @@ function sanitizeShareUrl(rawUrl: string): string {
   try {
     const baseOrigin = typeof window !== 'undefined' && window.location.origin
       ? window.location.origin
-      : 'https://lastasylumplague.com';
+      : 'https://lastasylumbr.com.br';
     const parsed = new URL(trimmed, baseOrigin);
     if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
       return parsed.href;

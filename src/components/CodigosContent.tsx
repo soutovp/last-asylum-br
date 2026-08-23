@@ -170,7 +170,7 @@ export default function CodigosContent() {
       {/* Compartilhamento */}
       <div className="mt-12 max-w-xl mx-auto">
         <SocialShareBar 
-          url="https://lastasylumplague.com/codigos" 
+          url="https://lastasylumbr.com.br/codigos" 
           title="Códigos de Resgate Ativos - Last Asylum BR" 
           description="Confira todos os códigos ativos e ganhe recursos grátis em Last Asylum: Plague!" 
           variant="card" 

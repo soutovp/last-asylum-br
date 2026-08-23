@@ -134,7 +134,7 @@ export default function HeroDetail({ hero }: HeroDetailProps) {
 
           <div className="pt-2">
             <SocialShareBar 
-              url={`https://lastasylumplague.com/herois/${hero.slug}`} 
+              url={`https://lastasylumbr.com.br/herois/${hero.slug}`} 
               title={`Guia Completo do Herói ${hero.name} - Last Asylum BR`} 
               description={hero.title} 
               variant="pill" 

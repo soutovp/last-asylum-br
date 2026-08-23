@@ -216,7 +216,7 @@ export default async function GuiaDetailPage({ params }: { params: Promise<{ slu
               )}
               <div className="pt-2">
                 <SocialShareBar 
-                  url={`https://lastasylumplague.com/guias/${slug}`} 
+                  url={`https://lastasylumbr.com.br/guias/${slug}`} 
                   title={article.title} 
                   description={article.summary} 
                   variant="pill" 
@@ -245,7 +245,7 @@ export default async function GuiaDetailPage({ params }: { params: Promise<{ slu
             {/* Rodapé Semântico com Autor e Categorias */}
             <footer className="border-t border-slate-800/80 pt-8 space-y-8">
               <SocialShareBar 
-                url={`https://lastasylumplague.com/guias/${slug}`} 
+                url={`https://lastasylumbr.com.br/guias/${slug}`} 
                 title={article.title} 
                 description={article.summary} 
                 variant="card" 
