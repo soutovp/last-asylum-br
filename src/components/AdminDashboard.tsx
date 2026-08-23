@@ -461,7 +461,7 @@ export default function AdminDashboard({
   }
 
   return (
-    <div className="min-h-screen flex bg-[#080c14] text-slate-100 selection:bg-[#00ff88] selection:text-slate-950">
+    <div className="min-h-screen flex flex-col bg-[#080c14] text-slate-100 selection:bg-[#00ff88] selection:text-slate-950">
       
       {/* SIDEBAR ADMINISTRATIVA PROFISSIONAL COLARESVEL */}
       <AdminSidebar
@@ -484,7 +484,7 @@ export default function AdminDashboard({
       />
 
       {/* ÁREA DE CONTEÚDO PRINCIPAL DO DASHBOARD COM MARGEM AJUSTÁVEL */}
-      <div className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ${sidebarCollapsed ? "lg:pl-20" : "lg:pl-72"}`}>
+      <div className={`flex-1 flex flex-col w-full transition-all duration-300 ${sidebarCollapsed ? "lg:pl-20" : "lg:pl-72"}`}>
         <main className="flex-1 p-6 sm:p-10 max-w-7xl w-full mx-auto">
           
           {/* SE RENDERIZA O EDITOR COMPARTILHADO */}

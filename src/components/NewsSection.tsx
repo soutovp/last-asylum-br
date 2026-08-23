@@ -90,7 +90,6 @@ export default function NewsSection({ initialArticles = [] }: NewsSectionProps) 
   useEffect(() => {
     // Se já temos notícias carregadas pelo servidor, não precisamos fazer fetch no client-side
     if (initialArticles.length > 0) {
-      setLoading(false);
       return;
     }
 
@@ -212,7 +211,7 @@ export default function NewsSection({ initialArticles = [] }: NewsSectionProps) 
                   )}
 
                   {/* Texto do destaque */}
-                  <div className="flex-1 p-5 sm:p-6 md:p-8 flex flex-col justify-center space-y-3 md:space-y-4 z-20">
+                  <div className="flex-1 p-5 pb-12 sm:p-6 md:p-8 flex flex-col justify-center space-y-3 md:space-y-4 z-20">
                     <div className="flex items-center gap-3">
                       <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${item.tagColor}`}>
                         {item.category}
@@ -249,14 +248,14 @@ export default function NewsSection({ initialArticles = [] }: NewsSectionProps) 
             {featuredItems.length > 1 && (
               <>
                 {/* Indicadores (Dots) */}
-                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-1.5 z-20">
+                <div className="absolute top-3 right-3 md:top-auto md:right-auto md:bottom-4 md:left-1/2 md:-translate-x-1/2 flex items-center gap-1.5 z-30 bg-slate-950/70 backdrop-blur-md px-2.5 py-1.5 rounded-full border border-slate-800/80 shadow-lg w-fit">
                   {featuredItems.map((_, dotIdx) => (
                     <button
                       key={dotIdx}
                       onClick={() => setCarouselIndex(dotIdx)}
                       aria-label={`Ver matéria em destaque ${dotIdx + 1}`}
-                      className={`w-2 h-2 rounded-full transition-all ${
-                        carouselIndex === dotIdx ? "bg-emerald-400 scale-110" : "bg-slate-700 hover:bg-slate-600"
+                      className={`w-2 h-2 rounded-full transition-all cursor-pointer ${
+                        carouselIndex === dotIdx ? "bg-emerald-400 scale-125 w-4" : "bg-slate-600 hover:bg-slate-400"
                       }`}
                     />
                   ))}

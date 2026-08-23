@@ -37,7 +37,7 @@ export default function AdminSidebar({
   return (
     <>
       {/* BOTÃO MOBILE HAMBÚRGUER (EXIBIDO APENAS EM DISPOSITIVOS MÓVEIS) */}
-      <div className="lg:hidden sticky top-0 z-40 bg-[#101623]/95 border-b border-slate-800 p-4 flex items-center justify-between backdrop-blur-xl">
+      <div className="lg:hidden sticky top-0 w-full z-40 bg-[#101623]/95 border-b border-slate-800 p-4 flex items-center justify-between backdrop-blur-xl">
         <div className="flex items-center">
           <img src="/images/last-asylum-br-logo.webp" alt="Logo" className="h-7 w-auto object-contain" />
         </div>

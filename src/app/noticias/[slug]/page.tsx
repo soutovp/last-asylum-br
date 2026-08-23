@@ -173,20 +173,26 @@ export default async function NewsDetailPage({ params }: { params: Promise<{ slu
         <main className="flex-1 py-12 max-w-4xl mx-auto px-4 w-full">
           <article className="bg-[#101623]/95 border border-slate-800 rounded-3xl p-6 sm:p-10 backdrop-blur-xl shadow-2xl space-y-8">
             <header className="space-y-6">
-              {/* Breadcrumb e Badge */}
-              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800/80 pb-5">
-                <Link href="/" className="text-xs font-mono font-bold text-[#00ff88] hover:text-[#15ff96] transition-colors flex items-center gap-1.5">
+              {/* Breadcrumb e Metadados */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-4">
+                <Link
+                  href="/"
+                  className="text-xs font-mono font-bold text-[#00ff88] hover:text-[#15ff96] transition-colors inline-flex items-center gap-1.5 w-fit"
+                >
                   <span>←</span> <span>Página Inicial</span>
                 </Link>
-                <div className="flex items-center gap-3">
-                  <span className="px-3 py-1 rounded-full text-xs font-semibold bg-[#00ff88]/10 text-[#00ff88] border border-[#00ff88]/20">
-                    {article.category || "Atualizações"}
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="px-3 py-1 rounded-full text-xs font-semibold bg-[#00ff88]/10 text-[#00ff88] border border-[#00ff88]/30 inline-flex items-center gap-1.5 shadow-sm">
+                    <span>🏷️</span>
+                    <span>{article.category || "Atualizações"}</span>
                   </span>
-                  <span className="text-xs font-mono text-slate-400">
-                    Publicado em <time dateTime={article.created_at.slice(0, 10)}>{formattedDate}</time>
+                  <span className="px-3 py-1 rounded-full text-xs font-mono bg-slate-900/90 text-slate-300 border border-slate-800 inline-flex items-center gap-1.5">
+                    <span>📅</span>
+                    <time dateTime={article.created_at.slice(0, 10)}>{formattedDate}</time>
                   </span>
-                  <span className="text-xs font-mono text-slate-500 flex items-center gap-1.5">
-                    <span>👁️</span> <span>{article.views || 0} visualizações</span>
+                  <span className="px-3 py-1 rounded-full text-xs font-mono bg-slate-900/90 text-slate-400 border border-slate-800 inline-flex items-center gap-1.5">
+                    <span>👁️</span>
+                    <span>{article.views || 0} views</span>
                   </span>
                 </div>
               </div>
