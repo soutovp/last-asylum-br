@@ -85,12 +85,12 @@ export interface StarResult {
 }
 
 export function calcularShardsTotal(estrelaAtual: number, estrelaDesejada: number): StarResult {
-  const atualInt = Math.round(estrelaAtual * 10);
-  const desejadaInt = Math.round(estrelaDesejada * 10);
-
-  if (isNaN(atualInt) || isNaN(desejadaInt)) {
+  if (isNaN(estrelaAtual) || isNaN(estrelaDesejada)) {
     return { estrelaAtual, estrelaDesejada, totalShards: 0, totalFormatado: "0", erro: "Informe valores numéricos válidos." };
   }
+
+  const atualInt = Math.round(estrelaAtual * 5) * 2;
+  const desejadaInt = Math.round(estrelaDesejada * 5) * 2;
 
   if (atualInt < 0 || desejadaInt > 100) {
     return { estrelaAtual, estrelaDesejada, totalShards: 0, totalFormatado: "0", erro: "Estrelas devem estar entre 0.0 e 10.0." };

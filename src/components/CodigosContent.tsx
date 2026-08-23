@@ -76,8 +76,9 @@ export default function CodigosContent() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center items-center py-20">
-          <div className="w-12 h-12 border-4 border-[#00ff88] border-t-transparent rounded-full animate-spin"></div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-pulse">
+          <div className="h-44 rounded-2xl bg-slate-900/50 border border-slate-800" />
+          <div className="h-44 rounded-2xl bg-slate-900/50 border border-slate-800" />
         </div>
       ) : codes.length === 0 ? (
         <div className="bg-[#101623]/95 border border-slate-800 rounded-3xl p-8 backdrop-blur-xl text-center space-y-4 shadow-2xl">

@@ -5,7 +5,7 @@ import Image from "next/image";
 
 export default function Footer() {
   return (
-    <footer className="w-full bg-[#0a0f1d] border-t border-slate-800/80 mt-auto relative z-10">
+    <footer className="w-full bg-[#070a10] border-t border-slate-800/80 mt-auto relative z-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* GRID DE 4 COLUNAS */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
@@ -25,7 +25,7 @@ export default function Footer() {
               O maior portal brasileiro de Last Asylum Plague. Guias de sobrevivência, calculadoras de evolução e novidades da comunidade.
             </p>
             <div className="text-xs text-slate-400 flex items-center gap-2 pt-2">
-              <svg className="w-4 h-4 text-[#00ff88] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+              <svg className="w-4 h-4 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
               <a href="mailto:contato@lastasylumbr.com.br" className="hover:text-white transition-colors underline font-semibold leading-none">
@@ -50,7 +50,7 @@ export default function Footer() {
 
           {/* COLUNA 2: NAVEGAÇÃO RÁPIDA */}
           <div className="space-y-3">
-            <h4 className="text-xs font-bold font-mono text-[#00ff88] uppercase tracking-wider">Navegação</h4>
+            <h4 className="text-xs font-bold font-mono text-emerald-400 uppercase tracking-wider">Navegação</h4>
             <ul className="space-y-2 text-xs text-slate-400">
               <li>
                 <Link href="/" className="hover:text-white transition-colors">Início</Link>
@@ -81,7 +81,7 @@ export default function Footer() {
                   className="hover:text-white transition-colors flex items-center gap-1.5"
                 >
                   Comunidade Discord
-                  <span className="text-[9px] text-[#00ff88] bg-[#00ff88]/10 px-1.5 py-0.5 rounded font-sans font-bold uppercase tracking-wide">Novo</span>
+                  <span className="text-[9px] text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-1.5 py-0.5 rounded font-sans font-bold uppercase tracking-wide">Novo</span>
                 </a>
               </li>
             </ul>
@@ -89,7 +89,7 @@ export default function Footer() {
 
           {/* COLUNA 3: CANAIS OFICIAIS */}
           <div className="space-y-3">
-            <h4 className="text-xs font-bold font-mono text-cyan-400 uppercase tracking-wider leading-relaxed">
+            <h4 className="text-xs font-bold font-mono text-amber-400 uppercase tracking-wider leading-relaxed">
               Canais Oficiais <br />
               Last Asylum Plague
             </h4>
@@ -119,7 +119,7 @@ export default function Footer() {
                   href="https://s.globallap.com/s/71plzq" 
                   target="_blank" 
                   rel="noopener noreferrer" 
-                  className="hover:text-[#00ff88] text-[#00ff88] font-bold transition-colors"
+                  className="hover:text-emerald-400 text-emerald-400 font-bold transition-colors"
                 >
                   Recarga Oficial (Web Shop) 💎
                 </a>

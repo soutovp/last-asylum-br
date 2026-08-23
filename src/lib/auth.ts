@@ -453,6 +453,7 @@ export async function updateProfileInDatabase(
     receiveCodigos?: boolean;
     receivePromocionais?: boolean;
     unsubscribeToken?: string;
+    avatarUrl?: string;
   }
 ): Promise<{ success: boolean; error?: string; session?: UserSession }> {
   try {
@@ -471,6 +472,7 @@ export async function updateProfileInDatabase(
       if (updates.receiveCodigos !== undefined) dbUpdates.receive_codigos = updates.receiveCodigos;
       if (updates.receivePromocionais !== undefined) dbUpdates.receive_promocionais = updates.receivePromocionais;
       if (updates.unsubscribeToken !== undefined) dbUpdates.unsubscribe_token = updates.unsubscribeToken;
+      if (updates.avatarUrl !== undefined) dbUpdates.avatar_url = updates.avatarUrl;
 
       const queryField = userId.includes("@") ? "email" : "id";
       const { error } = await supabase
@@ -498,6 +500,7 @@ export async function updateProfileInDatabase(
     if (updates.receiveCodigos !== undefined) sessionUpdates.receiveCodigos = updates.receiveCodigos;
     if (updates.receivePromocionais !== undefined) sessionUpdates.receivePromocionais = updates.receivePromocionais;
     if (updates.unsubscribeToken !== undefined) sessionUpdates.unsubscribeToken = updates.unsubscribeToken;
+    if (updates.avatarUrl !== undefined) sessionUpdates.avatarUrl = updates.avatarUrl;
 
     if (isSupabaseConfigured) {
       try {

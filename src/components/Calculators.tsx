@@ -9,7 +9,15 @@ import {
 } from "@/lib/calculators";
 
 // COMPONENTE DE ILUSTRAÇÃO VISUAL DAS 5 ESTRELAS (DIVISÃO POR PERNAS DE 0.2 A 1.0)
-function StarDisplay({ val, onLegClick }: { val: number; onLegClick?: (value: number) => void }) {
+function StarDisplay({
+  val,
+  onLegClick,
+  onTierChange,
+}: {
+  val: number;
+  onLegClick?: (value: number) => void;
+  onTierChange?: (isRed: boolean) => void;
+}) {
   const isRed = val > 5.0;
   const effectiveVal = isRed ? Number((val - 5.0).toFixed(1)) : val;
 
@@ -76,77 +84,110 @@ function StarDisplay({ val, onLegClick }: { val: number; onLegClick?: (value: nu
   ];
 
   return (
-    <div className="flex items-center justify-center gap-1.5 sm:gap-2 py-2">
-      {[1, 2, 3, 4, 5].map((starIndex) => {
-        const isFull = starIndex <= fullStars;
-        const isCurrentFractional = starIndex === fullStars + 1;
+    <div className="py-2 space-y-2">
+      {/* SELETOR DE FAIXA DE ESTRELAS: AMARELAS (1-5) VS VERMELHAS (6-10) */}
+      {onTierChange && (
+        <div className="flex items-center justify-center gap-2 mb-1">
+          <button
+            type="button"
+            onClick={() => onTierChange(false)}
+            className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold transition-all ${
+              !isRed
+                ? "bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-[0_0_8px_rgba(245,158,11,0.25)]"
+                : "bg-slate-900/60 text-slate-500 border border-slate-800 hover:text-slate-300"
+            }`}
+          >
+            ★ Amarelas (0-5)
+          </button>
+          <button
+            type="button"
+            onClick={() => onTierChange(true)}
+            className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold transition-all ${
+              isRed
+                ? "bg-red-500/20 text-red-400 border border-red-500/40 shadow-[0_0_8px_rgba(239,68,68,0.25)]"
+                : "bg-slate-900/60 text-slate-500 border border-slate-800 hover:text-slate-300"
+            }`}
+          >
+            ★ Vermelhas (6-10)
+          </button>
+        </div>
+      )}
 
-        return (
-          <div key={starIndex} className="relative flex items-center justify-center">
-            <svg
-              className="w-8 h-8 sm:w-9 sm:h-9 transition-all duration-300"
-              viewBox="0 0 24 24"
-            >
-              {legs.map((leg, legIdx) => {
-                let isActive = false;
-                if (isFull) {
-                  isActive = true;
-                } else if (isCurrentFractional) {
-                  isActive = fraction >= leg.req;
-                }
+      <div className="flex items-center justify-center gap-1.5 sm:gap-2">
+        {[1, 2, 3, 4, 5].map((starIndex) => {
+          const isFull = starIndex <= fullStars;
+          const isCurrentFractional = starIndex === fullStars + 1;
 
-                const activeFillLight = isRed ? leg.rLight : leg.yLight;
-                const activeFillDark = isRed ? leg.rDark : leg.yDark;
-                const inactiveFillLight = "#374151";
-                const inactiveFillDark = "#1f2937";
-
-                const activeStroke = isRed ? "#b91c1c" : "#d97706";
-                const inactiveStroke = isRed ? "rgba(239, 68, 68, 0.15)" : "rgba(245, 158, 11, 0.15)";
-
-                const handlePathClick = () => {
-                  if (onLegClick) {
-                    const clickedVal = (isRed ? 5.0 : 0.0) + (starIndex - 1) + leg.req;
-                    onLegClick(Number(clickedVal.toFixed(1)));
+          return (
+            <div key={starIndex} className="relative flex items-center justify-center">
+              <svg
+                className="w-8 h-8 sm:w-9 sm:h-9 transition-all duration-300"
+                viewBox="0 0 24 24"
+              >
+                {legs.map((leg, legIdx) => {
+                  let isActive = false;
+                  if (isFull) {
+                    isActive = true;
+                  } else if (isCurrentFractional) {
+                    isActive = fraction >= leg.req;
                   }
-                };
 
-                return (
-                  <g
-                    key={legIdx}
-                    onClick={handlePathClick}
-                    className={onLegClick ? "cursor-pointer hover:opacity-80" : ""}
-                    style={{
-                      filter: isActive
-                        ? `drop-shadow(0 0 1.5px ${isRed ? "rgba(185, 28, 28, 0.85)" : "rgba(217, 119, 6, 0.85)"})`
-                        : "none",
-                      transition: "all 0.2s ease-in-out",
-                    }}
-                  >
-                    {/* Metade Esquerda (Brilho / Clara) */}
-                    <path
-                      d={leg.dLight}
-                      fill={isActive ? activeFillLight : inactiveFillLight}
-                      stroke={isActive ? activeStroke : inactiveStroke}
-                      strokeWidth={isFull ? "0" : "0.5"}
-                      strokeLinejoin="round"
-                      strokeLinecap="round"
-                    />
-                    {/* Metade Direita (Sombra / Escura) */}
-                    <path
-                      d={leg.dDark}
-                      fill={isActive ? activeFillDark : inactiveFillDark}
-                      stroke={isActive ? activeStroke : inactiveStroke}
-                      strokeWidth={isFull ? "0" : "0.5"}
-                      strokeLinejoin="round"
-                      strokeLinecap="round"
-                    />
-                  </g>
-                );
-              })}
-            </svg>
-          </div>
-        );
-      })}
+                  const activeFillLight = isRed ? leg.rLight : leg.yLight;
+                  const activeFillDark = isRed ? leg.rDark : leg.yDark;
+                  const inactiveFillLight = "#374151";
+                  const inactiveFillDark = "#1f2937";
+
+                  const activeStroke = isRed ? "#b91c1c" : "#d97706";
+                  const inactiveStroke = isRed ? "rgba(239, 68, 68, 0.15)" : "rgba(245, 158, 11, 0.15)";
+
+                  const handlePathClick = (e: React.MouseEvent) => {
+                    e.stopPropagation();
+                    if (onLegClick) {
+                      const clickedVal = (isRed ? 5.0 : 0.0) + (starIndex - 1) + leg.req;
+                      onLegClick(Number(clickedVal.toFixed(1)));
+                    }
+                  };
+
+                  return (
+                    <g
+                      key={legIdx}
+                      onClick={handlePathClick}
+                      role={onLegClick ? "button" : undefined}
+                      tabIndex={onLegClick ? 0 : undefined}
+                      className={onLegClick ? "cursor-pointer hover:opacity-80 touch-manipulation select-none" : ""}
+                      style={{
+                        filter: isActive
+                          ? `drop-shadow(0 0 1.5px ${isRed ? "rgba(185, 28, 28, 0.85)" : "rgba(217, 119, 6, 0.85)"})`
+                          : "none",
+                        transition: "all 0.2s ease-in-out",
+                      }}
+                    >
+                      {/* Metade Esquerda (Brilho / Clara) */}
+                      <path
+                        d={leg.dLight}
+                        fill={isActive ? activeFillLight : inactiveFillLight}
+                        stroke={isActive ? activeStroke : inactiveStroke}
+                        strokeWidth={isFull ? "0" : "0.5"}
+                        strokeLinejoin="round"
+                        strokeLinecap="round"
+                      />
+                      {/* Metade Direita (Sombra / Escura) */}
+                      <path
+                        d={leg.dDark}
+                        fill={isActive ? activeFillDark : inactiveFillDark}
+                        stroke={isActive ? activeStroke : inactiveStroke}
+                        strokeWidth={isFull ? "0" : "0.5"}
+                        strokeLinejoin="round"
+                        strokeLinecap="round"
+                      />
+                    </g>
+                  );
+                })}
+              </svg>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -242,32 +283,44 @@ export default function Calculators() {
   };
 
   const setEstrelaAtualCombined = (val: number) => {
-    const rounded = Number(val.toFixed(1));
-    updateEstrelaAtual(rounded);
-    if (rounded >= estrelaDesejada) {
-      updateEstrelaDesejada(Math.min(10.0, rounded + 0.2));
+    const rounded = Number((Math.round(val * 5) / 5).toFixed(1));
+    const cleanAtual = Math.max(0.0, Math.min(9.8, rounded));
+    updateEstrelaAtual(cleanAtual);
+    if (cleanAtual >= estrelaDesejada) {
+      const nextDesejada = Number((Math.min(10.0, cleanAtual + 0.2)).toFixed(1));
+      updateEstrelaDesejada(nextDesejada);
     }
   };
 
   const setEstrelaDesejadaCombined = (val: number) => {
-    const rounded = Number(val.toFixed(1));
-    updateEstrelaDesejada(rounded);
-    if (rounded <= estrelaAtual) {
-      updateEstrelaAtual(Math.max(0.0, rounded - 0.2));
+    const rounded = Number((Math.round(val * 5) / 5).toFixed(1));
+    const cleanDesejada = Math.max(0.2, Math.min(10.0, rounded));
+    updateEstrelaDesejada(cleanDesejada);
+    if (cleanDesejada <= estrelaAtual) {
+      const prevAtual = Number((Math.max(0.0, cleanDesejada - 0.2)).toFixed(1));
+      updateEstrelaAtual(prevAtual);
     }
   };
 
   const handleEstrelaAtualInputChange = (val: string) => {
-    const cleaned = val.replace(/[^\d.]/g, "");
+    const normalized = val.replace(",", ".");
+    const cleaned = normalized.replace(/[^\d.]/g, "");
     setEstrelaAtualInput(cleaned);
     const parsed = parseFloat(cleaned);
     if (!isNaN(parsed)) {
-      setEstrelaAtual(parsed);
+      const cleanVal = Math.max(0.0, Math.min(9.8, parsed));
+      setEstrelaAtual(cleanVal);
+      if (cleanVal >= estrelaDesejada) {
+        const nextDesejada = Number((Math.min(10.0, cleanVal + 0.2)).toFixed(1));
+        setEstrelaDesejada(nextDesejada);
+        setEstrelaDesejadaInput(nextDesejada.toFixed(1));
+      }
     }
   };
 
   const handleEstrelaAtualBlur = () => {
-    let val = parseFloat(estrelaAtualInput);
+    const normalized = estrelaAtualInput.replace(",", ".");
+    let val = parseFloat(normalized);
     if (isNaN(val)) val = 0.0;
     val = Math.max(0.0, Math.min(9.8, val));
     const rounded = Number((Math.round(val * 5) / 5).toFixed(1));
@@ -275,20 +328,44 @@ export default function Calculators() {
   };
 
   const handleEstrelaDesejadaInputChange = (val: string) => {
-    const cleaned = val.replace(/[^\d.]/g, "");
+    const normalized = val.replace(",", ".");
+    const cleaned = normalized.replace(/[^\d.]/g, "");
     setEstrelaDesejadaInput(cleaned);
     const parsed = parseFloat(cleaned);
     if (!isNaN(parsed)) {
-      setEstrelaDesejada(parsed);
+      const cleanVal = Math.max(0.2, Math.min(10.0, parsed));
+      setEstrelaDesejada(cleanVal);
+      if (cleanVal <= estrelaAtual) {
+        const prevAtual = Number((Math.max(0.0, cleanVal - 0.2)).toFixed(1));
+        setEstrelaAtual(prevAtual);
+        setEstrelaAtualInput(prevAtual.toFixed(1));
+      }
     }
   };
 
   const handleEstrelaDesejadaBlur = () => {
-    let val = parseFloat(estrelaDesejadaInput);
+    const normalized = estrelaDesejadaInput.replace(",", ".");
+    let val = parseFloat(normalized);
     if (isNaN(val)) val = 10.0;
     val = Math.max(0.2, Math.min(10.0, val));
     const rounded = Number((Math.round(val * 5) / 5).toFixed(1));
     setEstrelaDesejadaCombined(rounded);
+  };
+
+  const toggleEstrelaAtualTier = (toRed: boolean) => {
+    if (toRed && estrelaAtual <= 5.0) {
+      setEstrelaAtualCombined(Number((estrelaAtual + 5.0).toFixed(1)));
+    } else if (!toRed && estrelaAtual > 5.0) {
+      setEstrelaAtualCombined(Number((estrelaAtual - 5.0).toFixed(1)));
+    }
+  };
+
+  const toggleEstrelaDesejadaTier = (toRed: boolean) => {
+    if (toRed && estrelaDesejada <= 5.0) {
+      setEstrelaDesejadaCombined(Number((estrelaDesejada + 5.0).toFixed(1)));
+    } else if (!toRed && estrelaDesejada > 5.0) {
+      setEstrelaDesejadaCombined(Number((estrelaDesejada - 5.0).toFixed(1)));
+    }
   };
 
   const incEstrela = (val: number, max: number) => Number(Math.min(max, val + 0.2).toFixed(1));
@@ -425,8 +502,9 @@ export default function Calculators() {
 
                   <div className="flex items-center gap-2">
                     <button
+                      type="button"
                       onClick={() => updateNivelAtual(Math.max(1, nivelAtual - 1))}
-                      className="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-[#00ff88] text-xl font-bold flex items-center justify-center border border-slate-700 select-none"
+                      className="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-emerald-400 text-xl font-bold flex items-center justify-center border border-slate-700 select-none cursor-pointer touch-manipulation"
                     >
                       -
                     </button>
@@ -437,12 +515,13 @@ export default function Calculators() {
                       value={nivelAtualInput}
                       onChange={(e) => handleNivelAtualInputChange(e.target.value)}
                       onBlur={handleNivelAtualBlur}
-                      className="w-full h-10 text-center text-xl font-extrabold text-white bg-slate-950 rounded-xl border border-slate-700 focus:outline-none focus:border-[#00ff88]"
+                      className="w-full h-10 text-center text-xl font-extrabold text-white bg-slate-950 rounded-xl border border-slate-700 focus:outline-none focus:border-emerald-500"
                     />
 
                     <button
+                      type="button"
                       onClick={() => setNivelAtualCombined(Math.min(147, nivelAtual + 1))}
-                      className="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-[#00ff88] text-xl font-bold flex items-center justify-center border border-slate-700 select-none"
+                      className="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-emerald-400 text-xl font-bold flex items-center justify-center border border-slate-700 select-none cursor-pointer touch-manipulation"
                     >
                       +
                     </button>
@@ -455,13 +534,14 @@ export default function Calculators() {
                     <span className="text-xs font-mono font-bold text-slate-300 uppercase">
                       Nível Desejado
                     </span>
-                    <span className="text-xs font-mono text-[#00ff88]">Nível {nivelDesejado}</span>
+                    <span className="text-xs font-mono text-emerald-400">Nível {nivelDesejado}</span>
                   </div>
 
                   <div className="flex items-center gap-2">
                     <button
+                      type="button"
                       onClick={() => setNivelDesejadoCombined(Math.max(2, nivelDesejado - 1))}
-                      className="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-[#00ff88] text-xl font-bold flex items-center justify-center border border-slate-700 select-none"
+                      className="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-emerald-400 text-xl font-bold flex items-center justify-center border border-slate-700 select-none cursor-pointer touch-manipulation"
                     >
                       -
                     </button>
@@ -472,12 +552,13 @@ export default function Calculators() {
                       value={nivelDesejadoInput}
                       onChange={(e) => handleNivelDesejadoInputChange(e.target.value)}
                       onBlur={handleNivelDesejadoBlur}
-                      className="w-full h-10 text-center text-xl font-extrabold text-white bg-slate-950 rounded-xl border border-slate-700 focus:outline-none focus:border-[#00ff88]"
+                      className="w-full h-10 text-center text-xl font-extrabold text-white bg-slate-950 rounded-xl border border-slate-700 focus:outline-none focus:border-emerald-500"
                     />
 
                     <button
+                      type="button"
                       onClick={() => updateNivelDesejado(Math.min(148, nivelDesejado + 1))}
-                      className="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-[#00ff88] text-xl font-bold flex items-center justify-center border border-slate-700 select-none"
+                      className="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-emerald-400 text-xl font-bold flex items-center justify-center border border-slate-700 select-none cursor-pointer touch-manipulation"
                     >
                       +
                     </button>
@@ -564,12 +645,17 @@ export default function Calculators() {
                   </div>
 
                   {/* ILUSTRAÇÃO DAS ESTRELAS ATUAIS */}
-                  <StarDisplay val={estrelaAtual} onLegClick={setEstrelaAtualCombined} />
+                  <StarDisplay
+                    val={estrelaAtual}
+                    onLegClick={setEstrelaAtualCombined}
+                    onTierChange={toggleEstrelaAtualTier}
+                  />
 
                   <div className="flex items-center gap-2 mt-2">
                     <button
-                      onClick={() => updateEstrelaAtual(decEstrela(estrelaAtual, 0.0))}
-                      className="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-amber-400 text-xl font-bold flex items-center justify-center border border-slate-700 select-none"
+                      type="button"
+                      onClick={() => setEstrelaAtualCombined(decEstrela(estrelaAtual, 0.0))}
+                      className="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-amber-400 text-xl font-bold flex items-center justify-center border border-slate-700 select-none cursor-pointer touch-manipulation"
                     >
                       -
                     </button>
@@ -583,8 +669,9 @@ export default function Calculators() {
                     />
 
                     <button
+                      type="button"
                       onClick={() => setEstrelaAtualCombined(incEstrela(estrelaAtual, 9.8))}
-                      className="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-amber-400 text-xl font-bold flex items-center justify-center border border-slate-700 select-none"
+                      className="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-amber-400 text-xl font-bold flex items-center justify-center border border-slate-700 select-none cursor-pointer touch-manipulation"
                     >
                       +
                     </button>
@@ -603,12 +690,17 @@ export default function Calculators() {
                   </div>
 
                   {/* ILUSTRAÇÃO DAS ESTRELAS DESEJADAS */}
-                  <StarDisplay val={estrelaDesejada} onLegClick={setEstrelaDesejadaCombined} />
+                  <StarDisplay
+                    val={estrelaDesejada}
+                    onLegClick={setEstrelaDesejadaCombined}
+                    onTierChange={toggleEstrelaDesejadaTier}
+                  />
 
                   <div className="flex items-center gap-2 mt-2">
                     <button
+                      type="button"
                       onClick={() => setEstrelaDesejadaCombined(decEstrela(estrelaDesejada, 0.2))}
-                      className="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-amber-400 text-xl font-bold flex items-center justify-center border border-slate-700 select-none"
+                      className="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-amber-400 text-xl font-bold flex items-center justify-center border border-slate-700 select-none cursor-pointer touch-manipulation"
                     >
                       -
                     </button>
@@ -622,8 +714,9 @@ export default function Calculators() {
                     />
 
                     <button
-                      onClick={() => updateEstrelaDesejada(incEstrela(estrelaDesejada, 10.0))}
-                      className="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-amber-400 text-xl font-bold flex items-center justify-center border border-slate-700 select-none"
+                      type="button"
+                      onClick={() => setEstrelaDesejadaCombined(incEstrela(estrelaDesejada, 10.0))}
+                      className="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-amber-400 text-xl font-bold flex items-center justify-center border border-slate-700 select-none cursor-pointer touch-manipulation"
                     >
                       +
                     </button>
@@ -708,8 +801,9 @@ export default function Calculators() {
 
                   <div className="flex items-center gap-2">
                     <button
+                      type="button"
                       onClick={() => updateSkillAtual(Math.max(1, skillAtual - 1))}
-                      className="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-cyan-400 text-xl font-bold flex items-center justify-center border border-slate-700 select-none"
+                      className="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-cyan-400 text-xl font-bold flex items-center justify-center border border-slate-700 select-none cursor-pointer touch-manipulation"
                     >
                       -
                     </button>
@@ -724,8 +818,9 @@ export default function Calculators() {
                     />
 
                     <button
+                      type="button"
                       onClick={() => setSkillAtualCombined(Math.min(21, skillAtual + 1))}
-                      className="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-cyan-400 text-xl font-bold flex items-center justify-center border border-slate-700 select-none"
+                      className="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-cyan-400 text-xl font-bold flex items-center justify-center border border-slate-700 select-none cursor-pointer touch-manipulation"
                     >
                       +
                     </button>
@@ -743,8 +838,9 @@ export default function Calculators() {
 
                   <div className="flex items-center gap-2">
                     <button
+                      type="button"
                       onClick={() => setSkillDesejadaCombined(Math.max(2, skillDesejada - 1))}
-                      className="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-cyan-400 text-xl font-bold flex items-center justify-center border border-slate-700 select-none"
+                      className="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-cyan-400 text-xl font-bold flex items-center justify-center border border-slate-700 select-none cursor-pointer touch-manipulation"
                     >
                       -
                     </button>
@@ -759,8 +855,9 @@ export default function Calculators() {
                     />
 
                     <button
+                      type="button"
                       onClick={() => updateSkillDesejada(Math.min(22, skillDesejada + 1))}
-                      className="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-cyan-400 text-xl font-bold flex items-center justify-center border border-slate-700 select-none"
+                      className="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 active:scale-95 text-cyan-400 text-xl font-bold flex items-center justify-center border border-slate-700 select-none cursor-pointer touch-manipulation"
                     >
                       +
                     </button>

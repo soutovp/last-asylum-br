@@ -115,31 +115,154 @@ function GuiasContent() {
     fetchGuides();
   }, []);
 
+  const [searchTerm, setSearchTerm] = useState("");
+
   // Filtros de guias em destaque
   const featuredGuides = guides.filter((g) => g.isFeatured);
 
-  // Paginação
-  const totalPages = Math.ceil(guides.length / ITEMS_PER_PAGE);
+  // Rotação automática do carrossel de destaques (a cada 6 segundos)
+  useEffect(() => {
+    if (featuredGuides.length <= 1) return;
+    const interval = setInterval(() => {
+      setCarouselIndex((prev) => (prev + 1) % featuredGuides.length);
+    }, 6000);
+    return () => clearInterval(interval);
+  }, [featuredGuides.length]);
+
+  // Filtragem por busca
+  const filteredGuides = guides.filter((g) => {
+    if (!searchTerm.trim()) return true;
+    const term = searchTerm.toLowerCase();
+    return (
+      g.title.toLowerCase().includes(term) ||
+      g.summary.toLowerCase().includes(term) ||
+      g.category.toLowerCase().includes(term)
+    );
+  });
+
+  // Paginação aplicada sobre a lista filtrada
+  const totalPages = Math.ceil(filteredGuides.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const currentGuidesList = guides.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  const currentGuidesList = filteredGuides.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // Se estiver redirecionando, exibe loader
+  // Se estiver redirecionando, exibe skeleton suave
   if (activeSlug) {
     return (
-      <div className="flex justify-center items-center py-20">
-        <div className="w-12 h-12 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
+      <div className="max-w-4xl mx-auto py-12 px-4 animate-pulse">
+        <div className="h-80 rounded-3xl bg-slate-900/50 border border-slate-800" />
       </div>
     );
   }
 
   return (
     <>
-      <div className="text-center max-w-3xl mx-auto mb-12">
+      {/* CARROSSEL DE DESTAQUES (Renderizado acima do título) */}
+      {!loading && featuredGuides.length > 0 && !searchTerm && (
+        <div className="relative group mb-12 overflow-hidden rounded-3xl border border-slate-850 bg-[#0c101b] shadow-2xl h-[340px] md:h-[240px] w-full">
+          {featuredGuides.map((guide, idx) => {
+            const isActive = idx === carouselIndex;
+            return (
+              <div
+                key={guide.id}
+                className={`absolute inset-0 flex flex-col md:flex-row justify-between transition-opacity duration-500 ease-in-out ${
+                  isActive ? "opacity-100 z-10" : "opacity-0 pointer-events-none z-0"
+                }`}
+              >
+                {/* Imagem do destaque */}
+                {guide.image_url && (
+                  <div className="w-full md:w-3/5 h-2/5 md:h-full relative overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-r from-slate-950 via-transparent to-transparent z-10" />
+                    <Image
+                      src={guide.image_url}
+                      alt={guide.title}
+                      fill
+                      priority={idx === 0}
+                      sizes="(max-width: 1024px) 100vw, 60vw"
+                      className="object-cover object-center"
+                    />
+                  </div>
+                )}
+
+                {/* Texto do destaque */}
+                <div className="flex-1 p-5 sm:p-6 md:p-8 flex flex-col justify-center space-y-3 md:space-y-4 z-20">
+                  <div className="flex items-center gap-3">
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
+                      {guide.category}
+                    </span>
+                    <span className="text-xs font-mono text-slate-400" suppressHydrationWarning>{guide.date}</span>
+                    <span className="text-xs font-mono text-cyan-400">★ Destaque</span>
+                  </div>
+
+                  <h3 className="text-base sm:text-lg md:text-2xl font-black text-white hover:text-cyan-400 transition-colors leading-tight">
+                    <Link href={`/guias/${guide.slug}`}>
+                      {guide.title}
+                    </Link>
+                  </h3>
+
+                  <p className="text-xs sm:text-sm text-slate-300 leading-relaxed line-clamp-2 md:line-clamp-3">
+                    {guide.summary}
+                  </p>
+
+                  <div className="pt-1.5">
+                    <Link
+                      href={`/guias/${guide.slug}`}
+                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-cyan-400 text-slate-950 font-bold text-xs sm:text-sm shadow-[0_0_20px_rgba(34,211,238,0.3)] hover:bg-cyan-300 transition-all transform hover:-translate-y-0.5"
+                    >
+                      <span>Ler Guia Completo</span>
+                      <span>→</span>
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* CONTROLES DO CARROSSEL */}
+          {featuredGuides.length > 1 && (
+            <>
+              {/* Indicadores (Dots) */}
+              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-1.5 z-20">
+                {featuredGuides.map((_, dotIdx) => (
+                  <button
+                    key={dotIdx}
+                    onClick={() => setCarouselIndex(dotIdx)}
+                    aria-label={`Ver guia em destaque ${dotIdx + 1}`}
+                    className={`w-2 h-2 rounded-full transition-all ${
+                      carouselIndex === dotIdx ? "bg-cyan-400 scale-110" : "bg-slate-700 hover:bg-slate-600"
+                    }`}
+                  />
+                ))}
+              </div>
+
+              {/* Seta Esquerda */}
+              <button
+                onClick={() => setCarouselIndex((prev) => (prev - 1 + featuredGuides.length) % featuredGuides.length)}
+                aria-label="Guia anterior"
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 w-8 h-8 rounded-full bg-slate-900/80 border border-slate-800 flex items-center justify-center text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity hover:border-cyan-400 z-20"
+              >
+                ◀
+              </button>
+
+              {/* Seta Direita */}
+              <button
+                onClick={() => setCarouselIndex((prev) => (prev + 1) % featuredGuides.length)}
+                aria-label="Próximo guia"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 w-8 h-8 rounded-full bg-slate-900/80 border border-slate-800 flex items-center justify-center text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity hover:border-cyan-400 z-20"
+              >
+                ▶
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* CABEÇALHO DA PÁGINA */}
+      <div className="text-center max-w-3xl mx-auto mb-10">
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900/90 border border-cyan-500/30 text-xs font-semibold text-cyan-400 mb-4">
           <span>📚 Base de Conhecimento</span>
         </div>
@@ -151,115 +274,57 @@ function GuiasContent() {
         </p>
       </div>
 
+      {/* CAMPO DE PESQUISA */}
+      <div className="max-w-md mx-auto mb-10 relative">
+        <input
+          type="text"
+          placeholder="Buscar guias ou estratégias..."
+          value={searchTerm}
+          onChange={(e) => {
+            setSearchTerm(e.target.value);
+            setCurrentPage(1);
+          }}
+          className="w-full px-4 py-3 pl-11 rounded-2xl bg-slate-900/90 border border-slate-800 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400 transition-all shadow-inner"
+        />
+        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 text-sm pointer-events-none">
+          🔍
+        </span>
+        {searchTerm && (
+          <button
+            onClick={() => {
+              setSearchTerm("");
+              setCurrentPage(1);
+            }}
+            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-white"
+          >
+            ✕
+          </button>
+        )}
+      </div>
+
       {loading ? (
-        <div className="flex justify-center items-center py-20">
-          <div className="w-12 h-12 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
+        <div className="space-y-6 animate-pulse">
+          <div className="h-60 rounded-3xl bg-slate-900/50 border border-slate-800" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="h-64 rounded-2xl bg-slate-900/50 border border-slate-800" />
+            <div className="h-64 rounded-2xl bg-slate-900/50 border border-slate-800" />
+            <div className="h-64 rounded-2xl bg-slate-900/50 border border-slate-800" />
+          </div>
         </div>
-      ) : guides.length === 0 ? (
+      ) : filteredGuides.length === 0 ? (
         <div className="bg-[#101623]/95 border border-slate-800 rounded-3xl p-8 backdrop-blur-xl text-center space-y-4 shadow-2xl">
           <span className="text-4xl block">📖</span>
-          <h3 className="text-xl font-bold text-white">Central de Guias em Breve</h3>
+          <h3 className="text-xl font-bold text-white">
+            {searchTerm ? "Nenhum guia encontrado" : "Central de Guias em Breve"}
+          </h3>
           <p className="text-sm text-slate-400 max-w-md mx-auto">
-            Nenhum guia foi publicado no momento. Fique atento às atualizações do painel!
+            {searchTerm
+              ? `Não encontramos guias correspondentes a "${searchTerm}". Tente outros termos.`
+              : "Nenhum guia foi publicado no momento. Fique atento às atualizações do painel!"}
           </p>
         </div>
       ) : (
         <div className="space-y-12">
-          
-          {/* CARROSSEL DE DESTAQUES */}
-          {featuredGuides.length > 0 && (
-            <div className="group relative rounded-3xl overflow-hidden bg-gradient-to-br from-[#101623]/90 via-[#101623]/75 to-slate-950/90 border border-cyan-500/20 shadow-2xl backdrop-blur-xl hover:border-cyan-400/40 transition-all duration-300">
-              
-              {featuredGuides.map((guide, idx) => {
-                if (idx !== carouselIndex) return null;
-                return (
-                  <div key={guide.id} className="p-8 sm:p-12 flex flex-col md:flex-row gap-8 items-center">
-                    
-                    <div className="w-full md:w-1/2 aspect-[16/10] rounded-2xl bg-slate-900 border border-slate-850 relative overflow-hidden flex items-center justify-center">
-                      {guide.image_url ? (
-                        <img src={guide.image_url} alt={guide.title} className="w-full h-full object-cover" />
-                      ) : (
-                        <>
-                          <div className="absolute inset-0 bg-gradient-to-tr from-cyan-500/10 via-transparent to-[#00ff88]/5"></div>
-                          <div className="relative z-10 text-center">
-                            <span className="text-5xl block mb-2">⭐</span>
-                            <span className="text-[10px] font-mono uppercase tracking-widest text-cyan-400 font-bold">
-                              Guia Recomendado
-                            </span>
-                            <h4 className="text-md font-bold text-white mt-1 leading-snug px-4">
-                              {guide.title}
-                            </h4>
-                          </div>
-                        </>
-                      )}
-                    </div>
-
-                    <div className="w-full md:w-1/2 space-y-4">
-                      <div className="flex items-center gap-3">
-                        <span className="px-3 py-1 rounded-full text-xs font-semibold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
-                          {guide.category}
-                        </span>
-                        <span className="text-xs font-mono text-slate-400">{guide.date}</span>
-                        <span className="text-xs font-mono text-slate-500">• {guide.readTime}</span>
-                      </div>
-
-                      <h3 className="text-2xl sm:text-3xl font-extrabold text-white leading-tight">
-                        {guide.title}
-                      </h3>
-
-                      <p className="text-sm sm:text-base text-slate-300 leading-relaxed">
-                        {guide.summary}
-                      </p>
-
-                      <div className="pt-2">
-                        <Link
-                          href={`/guias/${guide.slug}`}
-                          className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-cyan-400 text-slate-950 font-bold text-sm shadow-[0_0_20px_rgba(34,211,238,0.3)] hover:bg-cyan-300 transition-all transform hover:-translate-y-0.5"
-                        >
-                          <span>Ler Guia Completo</span>
-                          <span>→</span>
-                        </Link>
-                      </div>
-                    </div>
-
-                  </div>
-                );
-              })}
-
-              {/* SETAS E DOTS DO CARROSSEL */}
-              {featuredGuides.length > 1 && (
-                <>
-                  <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-1.5 z-20">
-                    {featuredGuides.map((_, dIdx) => (
-                      <button
-                        key={dIdx}
-                        onClick={() => setCarouselIndex(dIdx)}
-                        className={`w-2.5 h-2.5 rounded-full transition-all ${
-                          carouselIndex === dIdx ? "bg-cyan-400 scale-110" : "bg-slate-700 hover:bg-slate-600"
-                        }`}
-                      />
-                    ))}
-                  </div>
-
-                  <button
-                    onClick={() => setCarouselIndex((prev) => (prev - 1 + featuredGuides.length) % featuredGuides.length)}
-                    className="absolute left-4 top-1/2 transform -translate-y-1/2 w-9 h-9 rounded-full bg-slate-900/80 hover:bg-cyan-400 hover:text-slate-950 border border-slate-800 flex items-center justify-center text-white text-sm transition-all opacity-0 group-hover:opacity-100 z-20"
-                  >
-                    ◀
-                  </button>
-
-                  <button
-                    onClick={() => setCarouselIndex((prev) => (prev + 1) % featuredGuides.length)}
-                    className="absolute right-4 top-1/2 transform -translate-y-1/2 w-9 h-9 rounded-full bg-slate-900/80 hover:bg-cyan-400 hover:text-slate-950 border border-slate-800 flex items-center justify-center text-white text-sm transition-all opacity-0 group-hover:opacity-100 z-20"
-                  >
-                    ▶
-                  </button>
-                </>
-              )}
-
-            </div>
-          )}
-
           {/* LISTA GERAL DE GUIAS (PAGINADA) */}
           <div className="space-y-6">
             <h3 className="text-xl font-bold text-white border-l-4 border-cyan-400 pl-3">Todos os Guias & Tutoriais</h3>

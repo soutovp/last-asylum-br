@@ -15,6 +15,7 @@ interface VisualGuide {
 export default function GuiasVisuaisContent() {
   const [guides, setGuides] = useState<VisualGuide[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
   const [previewGuide, setPreviewGuide] = useState<VisualGuide | null>(null);
 
   useEffect(() => {
@@ -60,10 +61,20 @@ export default function GuiasVisuaisContent() {
     }
   };
 
+  // Filtragem por termo de busca
+  const filteredGuides = guides.filter((item) => {
+    if (!searchTerm.trim()) return true;
+    const term = searchTerm.toLowerCase();
+    return (
+      item.title.toLowerCase().includes(term) ||
+      item.description.toLowerCase().includes(term)
+    );
+  });
+
   return (
     <>
       {/* CABEÇALHO DA PÁGINA */}
-      <div className="text-center max-w-3xl mx-auto mb-12">
+      <div className="text-center max-w-3xl mx-auto mb-10">
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900/90 border border-cyan-500/30 text-xs font-semibold text-cyan-400 mb-4">
           <span>🖼️ Infográficos & Guias Rápidos</span>
         </div>
@@ -75,21 +86,49 @@ export default function GuiasVisuaisContent() {
         </p>
       </div>
 
+      {/* CAMPO DE PESQUISA */}
+      <div className="max-w-md mx-auto mb-10 relative">
+        <input
+          type="text"
+          placeholder="Buscar infográficos ou tabelas..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full px-4 py-3 pl-11 rounded-2xl bg-slate-900/90 border border-slate-800 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400 transition-all shadow-inner"
+        />
+        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 text-sm pointer-events-none">
+          🔍
+        </span>
+        {searchTerm && (
+          <button
+            onClick={() => setSearchTerm("")}
+            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-white"
+          >
+            ✕
+          </button>
+        )}
+      </div>
+
       {loading ? (
-        <div className="flex justify-center items-center py-20">
-          <div className="w-12 h-12 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-pulse">
+          <div className="h-64 rounded-2xl bg-slate-900/50 border border-slate-800" />
+          <div className="h-64 rounded-2xl bg-slate-900/50 border border-slate-800" />
+          <div className="h-64 rounded-2xl bg-slate-900/50 border border-slate-800" />
         </div>
-      ) : guides.length === 0 ? (
+      ) : filteredGuides.length === 0 ? (
         <div className="bg-[#101623]/95 border border-slate-800 rounded-3xl p-8 backdrop-blur-xl text-center space-y-4 shadow-2xl">
           <span className="text-4xl block">🖼️</span>
-          <h3 className="text-xl font-bold text-white">Nenhum guia visual</h3>
+          <h3 className="text-xl font-bold text-white">
+            {searchTerm ? "Nenhum guia visual encontrado" : "Nenhum guia visual"}
+          </h3>
           <p className="text-sm text-slate-400 max-w-md mx-auto">
-            Novos infográficos de estratégias estão sendo desenvolvidos e serão postados aqui.
+            {searchTerm
+              ? `Não encontramos infográficos correspondentes a "${searchTerm}". Tente outros termos.`
+              : "Novos infográficos de estratégias estão sendo desenvolvidos e serão postados aqui."}
           </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-stretch justify-center">
-          {guides.map((item) => {
+          {filteredGuides.map((item) => {
             const previewImageUrl = item.webp_url || (
               item.image_url.includes("cloudinary.com")
                 ? item.image_url.replace("/image/upload/", "/image/upload/f_webp,q_auto/").replace(/\.[^/.]+$/, ".webp")

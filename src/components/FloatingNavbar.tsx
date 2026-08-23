@@ -1,25 +1,34 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { getSavedSession, UserSession } from "@/lib/auth";
 
+const subscribeAuth = (callback: () => void) => {
+  if (typeof window === "undefined") return () => {};
+  window.addEventListener("auth_state_change", callback);
+  window.addEventListener("storage", callback);
+  return () => {
+    window.removeEventListener("auth_state_change", callback);
+    window.removeEventListener("storage", callback);
+  };
+};
+
 export default function FloatingNavbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
-  const [session, setSession] = useState<UserSession | null>(null);
 
-  useEffect(() => {
-    setSession(getSavedSession());
-    const handleAuthChange = () => {
-      setSession(getSavedSession());
-    };
-    window.addEventListener("auth_state_change", handleAuthChange);
-    return () => {
-      window.removeEventListener("auth_state_change", handleAuthChange);
-    };
-  }, []);
+  const sessionRaw = useSyncExternalStore(
+    subscribeAuth,
+    () => {
+      const s = getSavedSession();
+      return s ? JSON.stringify(s) : null;
+    },
+    () => null
+  );
+
+  const session: UserSession | null = sessionRaw ? JSON.parse(sessionRaw) : null;
 
   const formatFirstName = (fullNameOrCharName: string | undefined): string => {
     if (!fullNameOrCharName) return "Jogador";
@@ -104,9 +113,9 @@ export default function FloatingNavbar() {
   ];
 
   return (
-    <nav className="w-full max-w-5xl mx-auto px-4 relative z-30">
-      {/* BARRA FLUTUANTE CENTRALIZADA COM BORDAS ARREDONDADAS - LARGURA OTIMIZADA */}
-      <div className="flex items-center justify-between md:justify-center gap-3 sm:gap-6 p-2 sm:p-2.5 rounded-full bg-[#101623]/90 border border-[#00ff88]/30 shadow-[0_15px_40px_rgba(0,0,0,0.8)] backdrop-blur-xl transition-all duration-300">
+    <nav className="w-full max-w-5xl mx-auto px-4 relative z-50">
+      {/* BARRA FLUTUANTE CENTRALIZADA COM BORDAS ARREDONDADAS */}
+      <div className="flex items-center justify-between md:justify-center gap-3 sm:gap-6 p-2 sm:p-2.5 rounded-full glass-card border-emerald-500/25 shadow-[0_15px_40px_rgba(0,0,0,0.85)] transition-all duration-300">
         {/* NAV LINKS DESKTOP CENTRALIZADOS */}
         <div className="hidden md:flex items-center gap-0.5 sm:gap-1.5">
           {navItems.map((item) => {
@@ -121,7 +130,7 @@ export default function FloatingNavbar() {
 
             const content = (
               <>
-                <span className={isActive ? "text-slate-950" : "text-[#00ff88]"}>
+                <span className={isActive ? "text-slate-950" : "text-emerald-400"}>
                   {item.icon}
                 </span>
                 <span className="whitespace-nowrap">{item.label}</span>
@@ -130,8 +139,8 @@ export default function FloatingNavbar() {
 
             const className = `flex items-center gap-1.5 px-2.5 sm:px-4 py-2 text-[11px] sm:text-sm font-semibold rounded-full transition-all duration-200 whitespace-nowrap ${
               isActive
-                ? "bg-[#00ff88] text-slate-950 shadow-[0_0_15px_rgba(0,255,136,0.4)] transform scale-105"
-                : "text-slate-300 hover:text-[#00ff88] hover:bg-slate-800/60"
+                ? "bg-emerald-500 text-slate-950 shadow-[0_0_15px_rgba(16,185,129,0.35)] transform scale-105"
+                : "text-slate-300 hover:text-emerald-300 hover:bg-slate-800/60"
             }`;
 
             if (isExternal) {
@@ -163,11 +172,11 @@ export default function FloatingNavbar() {
         {/* AUTH E BADGE BRASIL À DIREITA */}
         <div className="flex items-center gap-3">
           {session ? (
-            <Link href="/perfil" className="flex items-center gap-2 group p-1 pr-3.5 rounded-full bg-slate-900 border border-slate-800 hover:border-[#00ff88]/50 transition-colors flex-shrink-0">
+            <Link href="/perfil" className="flex items-center gap-2 group p-1 pr-3.5 rounded-full bg-slate-900 border border-slate-800 hover:border-emerald-500/50 transition-colors flex-shrink-0">
               <img 
-                src={session.avatarUrl || "https://lastasylumplague.com/wp-content/uploads/2026/04/nicole-full-image-300x266.webp"} 
+                src={session.avatarUrl || "/images/avatar-default.svg"} 
                 alt="Avatar" 
-                className="w-7 h-7 rounded-full object-cover border border-[#00ff88]/30 group-hover:border-[#00ff88] transition-colors flex-shrink-0"
+                className="w-7 h-7 rounded-full object-cover border border-emerald-500/30 group-hover:border-emerald-400 transition-colors flex-shrink-0"
               />
               <span className="text-xs font-semibold text-slate-300 group-hover:text-white transition-colors whitespace-nowrap overflow-hidden text-ellipsis max-w-[120px] sm:max-w-none">
                 {formatFirstName(session.characterName && session.useCharacterName ? session.characterName : session.firstName)}
@@ -176,19 +185,19 @@ export default function FloatingNavbar() {
           ) : (
             <Link 
               href="/login" 
-              className="px-4 py-1.5 text-[11px] sm:text-xs font-bold text-slate-950 bg-[#00ff88] rounded-full shadow-[0_0_10px_rgba(0,255,136,0.2)] hover:bg-[#15ff96] transition-all"
+              className="px-4 py-1.5 text-[11px] sm:text-xs font-bold text-slate-950 bg-emerald-500 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.25)] hover:bg-emerald-400 transition-all"
             >
               Entrar
             </Link>
           )}
-
-
         </div>
 
         {/* BOTÃO MOBILE */}
         <button
-          onClick={() => setMobileOpen(!mobileOpen)}
-          className="md:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#00ff88] text-slate-950 font-bold text-xs shadow-[0_0_10px_rgba(0,255,136,0.3)]"
+          type="button"
+          aria-label="Abrir Menu de Navegação"
+          onClick={() => setMobileOpen((prev) => !prev)}
+          className="md:hidden flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-500 text-slate-950 font-bold text-xs shadow-[0_0_10px_rgba(16,185,129,0.25)] active:scale-95 transition-transform cursor-pointer"
         >
           <span>{mobileOpen ? "✕ Fechar" : "☰ Menu"}</span>
         </button>
@@ -196,7 +205,7 @@ export default function FloatingNavbar() {
 
       {/* DROPDOWN NAV MOBILE */}
       {mobileOpen && (
-        <div className="md:hidden mt-2 p-3 rounded-2xl bg-[#101623]/95 border border-[#00ff88]/30 shadow-2xl backdrop-blur-2xl space-y-1.5 animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="md:hidden mt-2 p-3 rounded-2xl glass-card border-emerald-500/30 shadow-2xl space-y-1.5 animate-in fade-in slide-in-from-top-2 duration-200 relative z-50">
           {navItems.map((item) => {
             const isExternal = item.href.startsWith("http");
             const isActive = !isExternal && (
@@ -209,7 +218,7 @@ export default function FloatingNavbar() {
 
             const content = (
               <>
-                <span className={isActive ? "text-slate-950" : "text-[#00ff88]"}>
+                <span className={isActive ? "text-slate-950" : "text-emerald-400"}>
                   {item.icon}
                 </span>
                 <span>{item.label}</span>
@@ -218,7 +227,7 @@ export default function FloatingNavbar() {
 
             const className = `flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors ${
               isActive
-                ? "bg-[#00ff88] text-slate-950 font-bold"
+                ? "bg-emerald-500 text-slate-950 font-bold"
                 : "text-slate-200 hover:bg-slate-800/80"
             }`;
 
@@ -254,12 +263,12 @@ export default function FloatingNavbar() {
               <Link
                 href="/perfil"
                 onClick={() => setMobileOpen(false)}
-                className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-slate-200 hover:text-[#00ff88] hover:bg-slate-900 border border-transparent"
+                className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-slate-200 hover:text-emerald-400 hover:bg-slate-900 border border-transparent"
               >
                 <img 
                   src={session.avatarUrl || "https://lastasylumplague.com/wp-content/uploads/2026/04/nicole-full-image-300x266.webp"} 
                   alt="Avatar" 
-                  className="w-5 h-5 rounded-full object-cover border border-[#00ff88]/40"
+                  className="w-5 h-5 rounded-full object-cover border border-emerald-500/40"
                 />
                 <span>Meu Perfil ({formatFirstName(session.characterName && session.useCharacterName ? session.characterName : session.firstName)})</span>
               </Link>
@@ -267,7 +276,7 @@ export default function FloatingNavbar() {
               <Link
                 href="/login"
                 onClick={() => setMobileOpen(false)}
-                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-slate-950 bg-[#00ff88] hover:bg-[#15ff96] transition-all shadow-[0_0_15px_rgba(0,255,136,0.2)]"
+                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-slate-950 bg-emerald-500 hover:bg-emerald-400 transition-all shadow-[0_0_15px_rgba(16,185,129,0.2)]"
               >
                 <span>🔑 Entrar / Cadastrar</span>
               </Link>

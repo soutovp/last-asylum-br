@@ -135,7 +135,7 @@ export default function Header() {
 
               const content = (
                 <>
-                  <span className={isActive ? "text-slate-950" : "text-[#00ff88]"}>
+                  <span className={isActive ? "text-slate-950" : "text-emerald-400"}>
                     {link.icon}
                   </span>
                   <span className="whitespace-nowrap">{link.label}</span>
@@ -144,8 +144,8 @@ export default function Header() {
 
               const className = `flex items-center gap-1 lg:gap-1.5 px-2 lg:px-2.5 xl:px-4 py-2 text-[11px] lg:text-xs xl:text-sm font-semibold rounded-full transition-all duration-200 whitespace-nowrap ${
                 isActive
-                  ? "text-slate-950 bg-[#00ff88] font-bold shadow-[0_0_15px_rgba(0,255,136,0.4)]"
-                  : "text-slate-300 hover:text-[#00ff88] hover:bg-slate-800/60"
+                  ? "text-slate-950 bg-emerald-500 font-bold shadow-[0_0_15px_rgba(16,185,129,0.35)]"
+                  : "text-slate-300 hover:text-emerald-300 hover:bg-slate-800/60"
               }`;
 
               if (isExternal) {
@@ -177,11 +177,11 @@ export default function Header() {
           {/* BADGE BRASIL DIREITA E AUTH */}
           <div className="hidden md:flex items-center gap-3">
             {session ? (
-              <Link href="/perfil" className="flex items-center gap-2 group p-1 pr-3.5 rounded-full bg-slate-900 border border-slate-800 hover:border-[#00ff88]/50 transition-colors flex-shrink-0">
+              <Link href="/perfil" className="flex items-center gap-2 group p-1 pr-3.5 rounded-full bg-slate-900 border border-slate-800 hover:border-emerald-500/50 transition-colors flex-shrink-0">
                 <img 
-                  src={session.avatarUrl || "https://lastasylumplague.com/wp-content/uploads/2026/04/nicole-full-image-300x266.webp"} 
+                  src={session.avatarUrl || "/images/avatar-default.svg"} 
                   alt="Avatar" 
-                  className="w-7 h-7 rounded-full object-cover border border-[#00ff88]/30 group-hover:border-[#00ff88] transition-colors flex-shrink-0"
+                  className="w-7 h-7 rounded-full object-cover border border-emerald-500/30 group-hover:border-emerald-400 transition-colors flex-shrink-0"
                 />
                 <span className="text-xs font-semibold text-slate-300 group-hover:text-white transition-colors whitespace-nowrap overflow-hidden text-ellipsis max-w-[120px] sm:max-w-none">
                   {formatFirstName(session.characterName && session.useCharacterName ? session.characterName : session.firstName)}
@@ -190,7 +190,7 @@ export default function Header() {
             ) : (
               <Link 
                 href="/login" 
-                className="px-4 py-2 text-xs font-bold text-slate-950 bg-[#00ff88] rounded-full shadow-[0_0_15px_rgba(0,255,136,0.3)] hover:bg-[#15ff96] active:scale-98 transition-all"
+                className="px-4 py-2 text-xs font-bold text-slate-950 bg-emerald-500 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.25)] hover:bg-emerald-400 active:scale-98 transition-all"
               >
                 Entrar
               </Link>
@@ -201,10 +201,10 @@ export default function Header() {
           {/* MOBILE HAMBURGER BUTTON */}
           <div className="flex md:hidden items-center">
             <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              onClick={() => setMobileMenuOpen((prev) => !prev)}
               type="button"
               aria-label="Menu principal"
-              className="p-2 rounded-full text-slate-[#00ff88] bg-slate-900 border border-[#00ff88]/30 focus:outline-none"
+              className="p-2 rounded-full text-emerald-400 bg-slate-900 border border-emerald-500/30 focus:outline-none active:scale-95 transition-transform cursor-pointer"
             >
               <span className="sr-only">Abrir menu</span>
               {!mobileMenuOpen ? (
@@ -223,16 +223,16 @@ export default function Header() {
 
       {/* MOBILE MENU DROPDOWN */}
       {mobileMenuOpen && (
-        <div className="md:hidden bg-[#101623]/95 border-b border-[#00ff88]/20 px-4 pt-3 pb-6 space-y-2 backdrop-blur-2xl">
+        <div className="md:hidden bg-[#0e1420]/98 border-b border-emerald-500/20 px-4 pt-3 pb-6 space-y-2 backdrop-blur-2xl">
           {navLinks.map((link) => {
             const isExternal = link.href.startsWith("http");
             const content = (
               <>
-                <span className="text-[#00ff88]">{link.icon}</span>
+                <span className="text-emerald-400">{link.icon}</span>
                 <span>{link.label}</span>
               </>
             );
-            const className = "flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-slate-200 hover:text-[#00ff88] hover:bg-slate-900 border border-transparent hover:border-slate-800";
+            const className = "flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-slate-200 hover:text-emerald-400 hover:bg-slate-900 border border-transparent hover:border-slate-800";
             
             if (isExternal) {
               return (
@@ -265,12 +265,12 @@ export default function Header() {
               <Link
                 href="/perfil"
                 onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-slate-200 hover:text-[#00ff88] hover:bg-slate-900 border border-transparent hover:border-slate-800"
+                className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-slate-200 hover:text-emerald-400 hover:bg-slate-900 border border-transparent hover:border-slate-800"
               >
                 <img 
-                  src={session.avatarUrl || "https://lastasylumplague.com/wp-content/uploads/2026/04/nicole-full-image-300x266.webp"} 
+                  src={session.avatarUrl || "/images/avatar-default.svg"} 
                   alt="Avatar" 
-                  className="w-5 h-5 rounded-full object-cover border border-[#00ff88]/40"
+                  className="w-5 h-5 rounded-full object-cover border border-emerald-500/40"
                 />
                 <span>Meu Perfil ({formatFirstName(session.characterName && session.useCharacterName ? session.characterName : session.firstName)})</span>
               </Link>
@@ -278,7 +278,7 @@ export default function Header() {
               <Link
                 href="/login"
                 onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-slate-950 bg-[#00ff88] hover:bg-[#15ff96] border border-transparent transition-all shadow-[0_0_15px_rgba(0,255,136,0.2)]"
+                className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-slate-950 bg-emerald-500 hover:bg-emerald-400 border border-transparent transition-all shadow-[0_0_15px_rgba(16,185,129,0.2)]"
               >
                 <span>🔑 Entrar / Cadastrar</span>
               </Link>

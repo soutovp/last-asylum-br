@@ -34,6 +34,20 @@ function NoticiasContent() {
 
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [carouselIndex, setCarouselIndex] = useState(0);
+
+  // Filtra itens em destaque
+  const featuredNews = news.filter((item) => item.isFeatured);
+
+  // Rotação automática do carrossel de destaques (a cada 6 segundos)
+  useEffect(() => {
+    if (featuredNews.length <= 1) return;
+    const interval = setInterval(() => {
+      setCarouselIndex((prev) => (prev + 1) % featuredNews.length);
+    }, 6000);
+    return () => clearInterval(interval);
+  }, [featuredNews.length]);
 
   // Carrega a lista completa de notícias
   useEffect(() => {
@@ -107,18 +121,130 @@ function NoticiasContent() {
     fetchNews();
   }, []);
 
-  // Se estiver redirecionando, exibe loader
+  // Se estiver redirecionando, exibe skeleton suave
   if (activeSlug) {
     return (
-      <div className="flex justify-center items-center py-20">
-        <div className="w-12 h-12 border-4 border-[#00ff88] border-t-transparent rounded-full animate-spin"></div>
+      <div className="max-w-4xl mx-auto py-12 px-4 animate-pulse">
+        <div className="h-80 rounded-3xl bg-slate-900/50 border border-slate-800" />
       </div>
     );
   }
 
+  // Filtragem por termo de busca
+  const filteredNews = news.filter((item) => {
+    if (!searchTerm.trim()) return true;
+    const term = searchTerm.toLowerCase();
+    return (
+      item.title.toLowerCase().includes(term) ||
+      item.summary.toLowerCase().includes(term) ||
+      item.category.toLowerCase().includes(term)
+    );
+  });
+
   return (
     <>
-      <div className="text-center max-w-3xl mx-auto mb-12">
+      {/* CARROSSEL DE DESTAQUES (Renderizado acima do título) */}
+      {!loading && featuredNews.length > 0 && !searchTerm && (
+        <div className="relative group mb-12 overflow-hidden rounded-3xl border border-slate-850 bg-[#0c101b] shadow-2xl h-[340px] md:h-[240px] w-full">
+          {featuredNews.map((item, idx) => {
+            const isActive = idx === carouselIndex;
+            return (
+              <div
+                key={item.id}
+                className={`absolute inset-0 flex flex-col md:flex-row justify-between transition-opacity duration-500 ease-in-out ${
+                  isActive ? "opacity-100 z-10" : "opacity-0 pointer-events-none z-0"
+                }`}
+              >
+                {/* Imagem do destaque */}
+                {item.image_url && (
+                  <div className="w-full md:w-3/5 h-2/5 md:h-full relative overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-r from-slate-950 via-transparent to-transparent z-10" />
+                    <Image
+                      src={item.image_url}
+                      alt={item.title}
+                      fill
+                      priority={idx === 0}
+                      sizes="(max-width: 1024px) 100vw, 60vw"
+                      className="object-cover object-center"
+                    />
+                  </div>
+                )}
+
+                {/* Texto do destaque */}
+                <div className="flex-1 p-5 sm:p-6 md:p-8 flex flex-col justify-center space-y-3 md:space-y-4 z-20">
+                  <div className="flex items-center gap-3">
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#00ff88]/10 text-[#00ff88] border border-[#00ff88]/30">
+                      {item.category}
+                    </span>
+                    <span className="text-xs font-mono text-slate-400" suppressHydrationWarning>{item.date}</span>
+                    <span className="text-xs font-mono text-[#00ff88]">★ Destaque</span>
+                  </div>
+
+                  <h3 className="text-base sm:text-lg md:text-2xl font-black text-white hover:text-[#00ff88] transition-colors leading-tight">
+                    <Link href={`/noticias/${item.slug}`}>
+                      {item.title}
+                    </Link>
+                  </h3>
+
+                  <p className="text-xs sm:text-sm text-slate-300 leading-relaxed line-clamp-2 md:line-clamp-3">
+                    {item.summary}
+                  </p>
+
+                  <div className="pt-1.5">
+                    <Link
+                      href={`/noticias/${item.slug}`}
+                      className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#00ff88] text-slate-950 font-bold text-xs sm:text-sm shadow-[0_0_20px_rgba(0,255,136,0.3)] hover:bg-[#15ff96] transition-all transform hover:-translate-y-0.5"
+                    >
+                      <span>Ler Matéria Completa</span>
+                      <span>→</span>
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* CONTROLES DO CARROSSEL */}
+          {featuredNews.length > 1 && (
+            <>
+              {/* Indicadores (Dots) */}
+              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-1.5 z-20">
+                {featuredNews.map((_, dotIdx) => (
+                  <button
+                    key={dotIdx}
+                    onClick={() => setCarouselIndex(dotIdx)}
+                    aria-label={`Ver matéria em destaque ${dotIdx + 1}`}
+                    className={`w-2 h-2 rounded-full transition-all ${
+                      carouselIndex === dotIdx ? "bg-[#00ff88] scale-110" : "bg-slate-700 hover:bg-slate-600"
+                    }`}
+                  />
+                ))}
+              </div>
+
+              {/* Seta Esquerda */}
+              <button
+                onClick={() => setCarouselIndex((prev) => (prev - 1 + featuredNews.length) % featuredNews.length)}
+                aria-label="Matéria anterior"
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 w-8 h-8 rounded-full bg-slate-900/80 border border-slate-800 flex items-center justify-center text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity hover:border-[#00ff88] z-20"
+              >
+                ◀
+              </button>
+
+              {/* Seta Direita */}
+              <button
+                onClick={() => setCarouselIndex((prev) => (prev + 1) % featuredNews.length)}
+                aria-label="Próxima matéria"
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 w-8 h-8 rounded-full bg-slate-900/80 border border-slate-800 flex items-center justify-center text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity hover:border-[#00ff88] z-20"
+              >
+                ▶
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* CABEÇALHO DA PÁGINA */}
+      <div className="text-center max-w-3xl mx-auto mb-10">
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-900/90 border border-[#00ff88]/30 text-xs font-semibold text-[#00ff88] mb-4">
           <span>📢 Comunicados & Notas de Atualização</span>
         </div>
@@ -130,21 +256,49 @@ function NoticiasContent() {
         </p>
       </div>
 
+      {/* CAMPO DE PESQUISA */}
+      <div className="max-w-md mx-auto mb-10 relative">
+        <input
+          type="text"
+          placeholder="Buscar notícias ou atualizações..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full px-4 py-3 pl-11 rounded-2xl bg-slate-900/90 border border-slate-800 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-[#00ff88] transition-all shadow-inner"
+        />
+        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 text-sm pointer-events-none">
+          🔍
+        </span>
+        {searchTerm && (
+          <button
+            onClick={() => setSearchTerm("")}
+            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-white"
+          >
+            ✕
+          </button>
+        )}
+      </div>
+
       {loading ? (
-        <div className="flex justify-center items-center py-20">
-          <div className="w-12 h-12 border-4 border-[#00ff88] border-t-transparent rounded-full animate-spin"></div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-pulse">
+          <div className="h-64 rounded-2xl bg-slate-900/50 border border-slate-800" />
+          <div className="h-64 rounded-2xl bg-slate-900/50 border border-slate-800" />
+          <div className="h-64 rounded-2xl bg-slate-900/50 border border-slate-800" />
         </div>
-      ) : news.length === 0 ? (
+      ) : filteredNews.length === 0 ? (
         <div className="bg-[#101623]/95 border border-slate-800 rounded-3xl p-8 backdrop-blur-xl text-center space-y-4 shadow-2xl">
           <span className="text-4xl block">📰</span>
-          <h3 className="text-xl font-bold text-white">Central de Updates em Breve</h3>
+          <h3 className="text-xl font-bold text-white">
+            {searchTerm ? "Nenhuma notícia encontrada" : "Central de Updates em Breve"}
+          </h3>
           <p className="text-sm text-slate-400 max-w-md mx-auto">
-            Nenhuma notícia ou patch note foi publicado no momento. Fique de olho!
+            {searchTerm
+              ? `Não encontramos resultados para "${searchTerm}". Tente outros termos.`
+              : "Nenhuma notícia ou patch note foi publicado no momento. Fique de olho!"}
           </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {news.map((item) => (
+          {filteredNews.map((item) => (
             <article
               key={item.id}
               className="flex flex-col justify-between rounded-2xl bg-[#101623]/80 border border-slate-800 hover:border-[#00ff88]/30 transition-all duration-300 group hover:-translate-y-1 shadow-lg backdrop-blur-md overflow-hidden"

@@ -4,11 +4,24 @@ import Link from "next/link";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { supabase } from "@/lib/supabase";
+import { createClient } from "@supabase/supabase-js";
 import { ROLES_REGISTRY } from "@/lib/permissions";
 import { UserRole } from "@/lib/permissions";
 import ViewCounterTrigger from "@/components/ViewCounterTrigger";
 import AdInitializer from "@/components/AdInitializer";
 import CommentsSection from "@/components/CommentsSection";
+
+function getSupabaseServerClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (supabaseUrl && serviceRoleKey) {
+    return createClient(supabaseUrl, serviceRoleKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+  }
+  return supabase;
+}
 
 // Métodos de geração de Metadados em tempo de execução
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
@@ -44,10 +57,11 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 export default async function NewsDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   
-  // Busca o artigo no banco
-  const { data: article } = await supabase
+  // Busca o artigo no banco junto com o perfil do autor
+  const serverClient = getSupabaseServerClient();
+  const { data: article } = await serverClient
     .from("articles")
-    .select("*")
+    .select("*, profiles:profiles!fk_articles_author_email (first_name, last_name, role, avatar_url)")
     .eq("slug", slug)
     .eq("type", "noticia")
     .single();
@@ -77,23 +91,14 @@ export default async function NewsDetailPage({ params }: { params: Promise<{ slu
   // Busca dados do autor
   let authorName = "Fernando Souto";
   let authorRole = "Administrador";
-  let authorAvatar = "https://lastasylumplague.com/wp-content/uploads/2026/04/nicole-full-image-300x266.webp";
+  let authorAvatar = "/images/avatar-default.svg";
 
-  if (article.author_email) {
-    try {
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("first_name, last_name, role, avatar_url")
-        .eq("email", article.author_email)
-        .single();
-      
-      if (profile) {
-        authorName = `${profile.first_name} ${profile.last_name}`;
-        authorRole = ROLES_REGISTRY[profile.role as UserRole]?.name || "Administrador";
-        authorAvatar = profile.avatar_url || authorAvatar;
-      }
-    } catch (e) {
-      console.error(e);
+  if (article.profiles) {
+    const profile = article.profiles as any;
+    authorName = `${profile.first_name} ${profile.last_name}`;
+    authorRole = ROLES_REGISTRY[profile.role as UserRole]?.name || "Administrador";
+    if (profile.avatar_url && !profile.avatar_url.includes("lastasylumplague.com")) {
+      authorAvatar = profile.avatar_url;
     }
   }
 
