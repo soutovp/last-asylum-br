@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { isSupabaseConfigured } from "@/lib/supabase";
+import { SocialShareBar } from "@/components/SocialShareBar";
 
 interface GiftCode {
   id: string;
@@ -40,10 +41,31 @@ export default function CodigosContent() {
     fetchCodes();
   }, []);
 
-  const handleCopy = (codeText: string, id: string) => {
-    navigator.clipboard.writeText(codeText);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2000);
+  const handleCopy = async (codeText: string, id: string) => {
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        await navigator.clipboard.writeText(codeText);
+        setCopiedId(id);
+        setTimeout(() => setCopiedId(null), 2000);
+      } else if (typeof document !== 'undefined') {
+        const textArea = document.createElement('textarea');
+        textArea.value = codeText;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        textArea.setAttribute('readonly', '');
+        document.body.appendChild(textArea);
+        textArea.select();
+        const successful = document.execCommand('copy');
+        document.body.removeChild(textArea);
+        if (successful) {
+          setCopiedId(id);
+          setTimeout(() => setCopiedId(null), 2000);
+        }
+      }
+    } catch (err) {
+      console.error('Erro ao copiar código de resgate:', err);
+    }
   };
 
   const isOldCode = (addedDateStr: string) => {
@@ -144,6 +166,17 @@ export default function CodigosContent() {
           })}
         </div>
       )}
+
+      {/* Compartilhamento */}
+      <div className="mt-12 max-w-xl mx-auto">
+        <SocialShareBar 
+          url="https://lastasylumplague.com/codigos" 
+          title="Códigos de Resgate Ativos - Last Asylum BR" 
+          description="Confira todos os códigos ativos e ganhe recursos grátis em Last Asylum: Plague!" 
+          variant="card" 
+          text="Compartilhar códigos com a Aliança"
+        />
+      </div>
     </>
   );
 }

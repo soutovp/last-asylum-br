@@ -9,6 +9,7 @@ import AdminGiftCodes from "./AdminGiftCodes";
 import AdminVisualGuides from "./AdminVisualGuides";
 import AdminMailMarketing from "./AdminMailMarketing";
 import AdminAnalytics from "./AdminAnalytics";
+import AdminHeroManagement from "./AdminHeroManagement";
 import { canUserAccessPage, getAccessiblePagesForUser, ADMIN_PAGES } from "@/lib/permissions";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { compressImageToWebp } from "@/lib/imageCompression";
@@ -510,27 +511,7 @@ export default function AdminDashboard({
             <>
               {/* PÁGINA: GESTÃO DE HERÓIS */}
               {currentPageId === "herois" && (
-                <div className="space-y-6">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-3xl bg-[#101623]/90 border border-slate-800">
-                    <div>
-                      <h2 className="text-2xl font-extrabold text-white">Catálogo & Atributos de Heróis</h2>
-                      <p className="text-xs text-slate-400 mt-1">
-                        Cadastre novos heróis, edite atributos de combate e vincule fotos dos personagens.
-                      </p>
-                    </div>
-                    <button className="px-5 py-2.5 rounded-xl bg-[#00ff88] text-slate-950 font-bold text-xs shadow-[0_0_15px_rgba(0,255,136,0.3)] hover:bg-[#15ff96]">
-                      + Novo Herói
-                    </button>
-                  </div>
-
-                  <div className="p-8 rounded-3xl bg-[#101623]/80 border border-slate-800 backdrop-blur-xl text-center space-y-3">
-                    <span className="text-4xl block">🛡️</span>
-                    <h3 className="text-lg font-bold text-white">Módulo de Gestão de Heróis</h3>
-                    <p className="text-xs text-slate-400 max-w-md mx-auto">
-                      Utilize o formulário de cadastro para publicar novos heróis com imagem e estatísticas.
-                    </p>
-                  </div>
-                </div>
+                <AdminHeroManagement session={session} />
               )}
 
               {/* PÁGINA: CENTRAL DE NOTÍCIAS */}

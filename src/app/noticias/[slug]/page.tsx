@@ -10,6 +10,7 @@ import { UserRole } from "@/lib/permissions";
 import ViewCounterTrigger from "@/components/ViewCounterTrigger";
 import AdInitializer from "@/components/AdInitializer";
 import CommentsSection from "@/components/CommentsSection";
+import { SocialShareBar } from "@/components/SocialShareBar";
 
 function getSupabaseServerClient() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -209,10 +210,18 @@ export default async function NewsDetailPage({ params }: { params: Promise<{ slu
 
               {/* Capa da Notícia */}
               {article.image_url && (
-                <div className="w-full aspect-[21/9] rounded-2xl overflow-hidden border border-slate-800 shadow-2xl relative">
+                <div className="w-full aspect-[21/9] rounded-2xl overflow-hidden border border-slate-800 shadow-2xl relative mb-4">
                   <img src={article.image_url} alt={article.title} className="w-full h-full object-cover" />
                 </div>
               )}
+              <div className="pt-2">
+                <SocialShareBar 
+                  url={`https://lastasylumplague.com/noticias/${slug}`} 
+                  title={article.title} 
+                  description={article.summary} 
+                  variant="pill" 
+                />
+              </div>
             </header>
 
             {/* Conteúdo Renderizado com Anúncio Injetado */}
@@ -234,7 +243,15 @@ export default async function NewsDetailPage({ params }: { params: Promise<{ slu
             </section>
 
             {/* Rodapé Semântico com Autor e Categorias */}
-            <footer className="border-t border-slate-800/80 pt-6">
+            <footer className="border-t border-slate-800/80 pt-8 space-y-8">
+              <SocialShareBar 
+                url={`https://lastasylumplague.com/noticias/${slug}`} 
+                title={article.title} 
+                description={article.summary} 
+                variant="card" 
+                text="Compartilhar com sua Aliança"
+              />
+              
               {/* Cartão do Autor */}
               <div className="flex items-center gap-3.5 p-4 rounded-2xl bg-slate-900/60 border border-slate-850 max-w-sm">
                 <img src={authorAvatar} alt={authorName} className="w-10 h-10 rounded-full object-cover border border-[#00ff88]" />
