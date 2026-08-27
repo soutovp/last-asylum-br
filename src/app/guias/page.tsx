@@ -163,7 +163,7 @@ function GuiasContent() {
     <>
       {/* CARROSSEL DE DESTAQUES (Renderizado acima do título) */}
       {!loading && featuredGuides.length > 0 && !searchTerm && (
-        <div className="relative group mb-12 overflow-hidden rounded-3xl border border-slate-850 bg-[#0c101b] shadow-2xl h-[340px] md:h-[240px] w-full">
+        <div className="relative group mb-12 overflow-hidden rounded-3xl border border-slate-850 bg-[#0c101b] shadow-2xl min-h-[340px] md:min-h-[260px] md:h-[260px] w-full">
           {featuredGuides.map((guide, idx) => {
             const isActive = idx === carouselIndex;
             return (
@@ -175,7 +175,7 @@ function GuiasContent() {
               >
                 {/* Imagem do destaque */}
                 {guide.image_url && (
-                  <div className="w-full md:w-3/5 h-2/5 md:h-full relative overflow-hidden">
+                  <div className="w-full md:w-3/5 h-2/5 md:h-full relative overflow-hidden shrink-0">
                     <div className="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-r from-slate-950 via-transparent to-transparent z-10" />
                     <Image
                       src={guide.image_url}
@@ -189,8 +189,8 @@ function GuiasContent() {
                 )}
 
                 {/* Texto do destaque */}
-                <div className="flex-1 p-5 pb-12 sm:p-6 md:p-8 flex flex-col justify-center space-y-3 md:space-y-4 z-20">
-                  <div className="flex items-center gap-3">
+                <div className="flex-1 p-5 md:p-7 flex flex-col justify-center gap-3 z-20">
+                  <div className="flex items-center gap-3 shrink-0">
                     <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
                       {guide.category}
                     </span>
@@ -198,7 +198,7 @@ function GuiasContent() {
                     <span className="text-xs font-mono text-cyan-400">★ Destaque</span>
                   </div>
 
-                  <h3 className="text-base sm:text-lg md:text-2xl font-black text-white hover:text-cyan-400 transition-colors leading-tight">
+                  <h3 className="text-base sm:text-lg md:text-2xl font-black text-white hover:text-cyan-400 transition-colors leading-tight line-clamp-2">
                     <Link href={`/guias/${guide.slug}`}>
                       {guide.title}
                     </Link>
@@ -208,7 +208,7 @@ function GuiasContent() {
                     {guide.summary}
                   </p>
 
-                  <div className="pt-1.5">
+                  <div className="pt-1.5 shrink-0">
                     <Link
                       href={`/guias/${guide.slug}`}
                       className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-cyan-400 text-slate-950 font-bold text-xs sm:text-sm shadow-[0_0_20px_rgba(34,211,238,0.3)] hover:bg-cyan-300 transition-all transform hover:-translate-y-0.5"

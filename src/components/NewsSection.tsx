@@ -185,7 +185,7 @@ export default function NewsSection({ initialArticles = [] }: NewsSectionProps) 
         
         {/* CARROSSEL DE DESTAQUES */}
         {!loading && featuredItems.length > 0 && selectedCategory === "Todos" && !searchTerm && (
-          <div className="relative group mb-12 overflow-hidden rounded-2xl border border-slate-800 bg-[#0e1420] shadow-2xl h-[340px] md:h-[240px] w-full">
+          <div className="relative group mb-12 overflow-hidden rounded-2xl border border-slate-800 bg-[#0e1420] shadow-2xl min-h-[340px] md:min-h-[260px] md:h-[260px] w-full">
             {featuredItems.map((item, idx) => {
               const isActive = idx === carouselIndex;
               return (
@@ -197,7 +197,7 @@ export default function NewsSection({ initialArticles = [] }: NewsSectionProps) 
                 >
                   {/* Imagem do destaque */}
                   {item.image_url && (
-                    <div className="w-full md:w-3/5 h-2/5 md:h-full relative overflow-hidden">
+                    <div className="w-full md:w-3/5 h-2/5 md:h-full relative overflow-hidden shrink-0">
                       <div className="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-r from-[#0e1420] via-transparent to-transparent z-10" />
                       <Image
                         src={item.image_url}
@@ -211,8 +211,8 @@ export default function NewsSection({ initialArticles = [] }: NewsSectionProps) 
                   )}
 
                   {/* Texto do destaque */}
-                  <div className="flex-1 p-5 pb-12 sm:p-6 md:p-8 flex flex-col justify-center space-y-3 md:space-y-4 z-20">
-                    <div className="flex items-center gap-3">
+                  <div className="flex-1 p-5 md:p-7 flex flex-col justify-center gap-3 z-20">
+                    <div className="flex items-center gap-3 shrink-0">
                       <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${item.tagColor}`}>
                         {item.category}
                       </span>
@@ -220,7 +220,7 @@ export default function NewsSection({ initialArticles = [] }: NewsSectionProps) 
                       <span className="text-xs font-mono text-amber-400 font-semibold">★ Destaque</span>
                     </div>
 
-                    <h3 className="text-base sm:text-lg md:text-2xl font-black text-white hover:text-emerald-300 transition-colors leading-tight">
+                    <h3 className="text-base sm:text-lg md:text-2xl font-black text-white hover:text-emerald-300 transition-colors leading-tight line-clamp-2">
                       <Link href={item.type === "guia" ? `/guias/${item.slug}` : `/noticias/${item.slug}`}>
                         {item.title}
                       </Link>
@@ -230,12 +230,12 @@ export default function NewsSection({ initialArticles = [] }: NewsSectionProps) 
                       {item.summary}
                     </p>
 
-                    <div className="pt-1.5">
+                    <div className="pt-1.5 shrink-0">
                       <Link
                         href={item.type === "guia" ? `/guias/${item.slug}` : `/noticias/${item.slug}`}
                         className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs sm:text-sm shadow-[0_0_15px_rgba(16,185,129,0.25)] hover:bg-emerald-400 transition-all transform hover:-translate-y-0.5"
                       >
-                        <span>Ler Matéria Completa</span>
+                        <span>Ler {item.type === "guia" ? "Guia Completo" : "Matéria Completa"}</span>
                         <span>→</span>
                       </Link>
                     </div>

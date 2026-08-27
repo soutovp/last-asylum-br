@@ -718,14 +718,27 @@ export default function AdminArticleEditor({
           {/* TÍTULO & RESUMO */}
           <div className="p-6 rounded-3xl bg-[#101623]/90 border border-slate-800 space-y-4">
             <div>
-              <label className="block text-xs font-mono font-bold text-slate-300 uppercase tracking-wider mb-2">
-                Título do Artigo
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-xs font-mono font-bold text-slate-300 uppercase tracking-wider">
+                  Título do Artigo
+                </label>
+                <div className="flex items-center gap-2">
+                  {title.length >= 80 && (
+                    <span className="text-[10px] font-bold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded">
+                      Limite de 80 caracteres atingido
+                    </span>
+                  )}
+                  <span className="text-[10px] font-mono text-slate-400">
+                    {title.length}/80 caracteres (Máx. 80 para exibição ideal em destaques e SEO)
+                  </span>
+                </div>
+              </div>
               <input
                 type="text"
                 value={title}
+                maxLength={80}
                 onChange={(e) => {
-                  const newTitle = e.target.value;
+                  const newTitle = e.target.value.slice(0, 80);
                   setTitle(newTitle);
                   if (!isSlugEdited) {
                     setSlug(slugify(newTitle));
@@ -733,7 +746,7 @@ export default function AdminArticleEditor({
                 }}
                 placeholder="Ex: Guia Definitivo do Médico da Praga"
                 required
-                className="w-full h-12 px-4 text-sm font-medium text-white bg-slate-900 rounded-xl border border-slate-800 focus:outline-none focus:border-[#00ff88]"
+                className={`w-full h-12 px-4 text-sm font-medium text-white bg-slate-900 rounded-xl border ${title.length >= 80 ? 'border-amber-500/50 focus:border-amber-400' : 'border-slate-800 focus:border-[#00ff88]'} focus:outline-none transition-colors`}
               />
             </div>
 
@@ -742,17 +755,25 @@ export default function AdminArticleEditor({
                 <label className="block text-xs font-mono font-bold text-slate-300 uppercase tracking-wider">
                   Resumo de Exibição
                 </label>
-                <span className="text-[10px] font-mono text-slate-400">
-                  {summary.length}/200 caracteres (Recomendado)
-                </span>
+                <div className="flex items-center gap-2">
+                  {summary.length >= 200 && (
+                    <span className="text-[10px] font-bold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded">
+                      Limite de 200 caracteres atingido
+                    </span>
+                  )}
+                  <span className="text-[10px] font-mono text-slate-400">
+                    {summary.length}/200 caracteres (Máx. 200 para resumo)
+                  </span>
+                </div>
               </div>
               <textarea
                 value={summary}
+                maxLength={200}
                 onChange={(e) => setSummary(e.target.value.slice(0, 200))}
                 placeholder="Uma breve introdução curta para atrair leitores na lista inicial..."
                 required
                 rows={3}
-                className="w-full p-4 text-xs sm:text-sm font-medium text-white bg-slate-900 rounded-xl border border-slate-800 focus:outline-none focus:border-[#00ff88] resize-none"
+                className={`w-full p-4 text-xs sm:text-sm font-medium text-white bg-slate-900 rounded-xl border ${summary.length >= 200 ? 'border-amber-500/50 focus:border-amber-400' : 'border-slate-800 focus:border-[#00ff88]'} focus:outline-none resize-none transition-colors`}
               />
             </div>
           </div>
