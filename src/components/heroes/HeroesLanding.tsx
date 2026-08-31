@@ -11,13 +11,24 @@ import {
   getRoleLabel,
   getRarityBadgeColor,
   getFactionBadgeColor,
-  getRoleBadgeColor,
+  sanitizeUrl,
 } from "@/lib/heroes";
 
-export default function HeroesLanding() {
-  const [heroesList, setHeroesList] = useState<Hero[]>(() => getAllHeroes());
+interface HeroesLandingProps {
+  initialHeroes?: Hero[];
+}
+
+export default function HeroesLanding({ initialHeroes }: HeroesLandingProps = {}) {
+  const [heroesList, setHeroesList] = useState<Hero[]>(() =>
+    initialHeroes && initialHeroes.length > 0 ? initialHeroes : getAllHeroes()
+  );
   const [searchTerm, setSearchTerm] = useState("");
-  const [serverAge, setServerAge] = useState<number>(() => getServerSettings().currentServerDay || 36);
+  const [serverAge, setServerAge] = useState<number>(() => {
+    if (typeof window !== "undefined") {
+      return getServerSettings()?.currentServerDay || 36;
+    }
+    return 36;
+  });
   const [factionFilter, setFactionFilter] = useState("Todos");
   const [roleFilter, setRoleFilter] = useState("Todos");
   const [rarityFilter, setRarityFilter] = useState("Todos");
@@ -274,7 +285,7 @@ function HeroCard({ hero, isAvailable }: { hero: Hero; isAvailable: boolean }) {
       <div className="h-60 bg-slate-900 relative overflow-hidden flex items-center justify-center">
         {hero.avatarUrl ? (
           <img
-            src={hero.avatarUrl}
+            src={sanitizeUrl(hero.avatarUrl, "/images/heroes/placeholder.webp")}
             alt={`Retrato de ${hero.name}`}
             className="w-full h-full object-cover object-top hover:scale-105 transition-transform duration-300"
           />

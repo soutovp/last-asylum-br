@@ -7,6 +7,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { isSupabaseConfigured } from "@/lib/supabase";
+import { truncateText } from "@/lib/utils";
 
 interface NewsItem {
   id: string;
@@ -145,7 +146,7 @@ function NoticiasContent() {
     <>
       {/* CARROSSEL DE DESTAQUES (Renderizado acima do título) */}
       {!loading && featuredNews.length > 0 && !searchTerm && (
-        <div className="relative group mb-12 overflow-hidden rounded-3xl border border-slate-850 bg-[#0c101b] shadow-2xl min-h-[340px] md:min-h-[260px] md:h-[260px] w-full">
+        <div className="relative group mb-12 overflow-hidden rounded-3xl border border-slate-850 bg-[#0c101b] shadow-2xl min-h-[360px] md:min-h-[280px] md:h-[280px] w-full">
           {featuredNews.map((item, idx) => {
             const isActive = idx === carouselIndex;
             return (
@@ -171,7 +172,7 @@ function NoticiasContent() {
                 )}
 
                 {/* Texto do destaque */}
-                <div className="flex-1 p-5 md:p-7 flex flex-col justify-center gap-3 z-20">
+                <div className="flex-1 p-5 md:p-6 lg:p-7 flex flex-col justify-center gap-2.5 md:gap-3 z-20">
                   <div className="flex items-center gap-3 shrink-0">
                     <span className="px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#00ff88]/10 text-[#00ff88] border border-[#00ff88]/30">
                       {item.category}
@@ -180,14 +181,14 @@ function NoticiasContent() {
                     <span className="text-xs font-mono text-[#00ff88]">★ Destaque</span>
                   </div>
 
-                  <h3 className="text-base sm:text-lg md:text-2xl font-black text-white hover:text-[#00ff88] transition-colors leading-tight line-clamp-2">
-                    <Link href={`/noticias/${item.slug}`}>
-                      {item.title}
+                  <h3 className="text-base sm:text-lg md:text-xl lg:text-2xl font-black text-white hover:text-[#00ff88] transition-colors leading-snug">
+                    <Link href={`/noticias/${item.slug}`} title={item.title}>
+                      {truncateText(item.title, 60)}
                     </Link>
                   </h3>
 
-                  <p className="text-xs sm:text-sm text-slate-300 leading-relaxed line-clamp-2 md:line-clamp-3">
-                    {item.summary}
+                  <p className="text-xs sm:text-sm text-slate-300 leading-relaxed line-clamp-2" title={item.summary}>
+                    {truncateText(item.summary, 125)}
                   </p>
 
                   <div className="pt-1.5 shrink-0">

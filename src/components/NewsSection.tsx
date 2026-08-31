@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import AdBanner from "@/components/AdBanner";
 import { isSupabaseConfigured } from "@/lib/supabase";
+import { truncateText } from "@/lib/utils";
 
 interface NewsItem {
   id: string;
@@ -185,7 +186,7 @@ export default function NewsSection({ initialArticles = [] }: NewsSectionProps) 
         
         {/* CARROSSEL DE DESTAQUES */}
         {!loading && featuredItems.length > 0 && selectedCategory === "Todos" && !searchTerm && (
-          <div className="relative group mb-12 overflow-hidden rounded-2xl border border-slate-800 bg-[#0e1420] shadow-2xl min-h-[340px] md:min-h-[260px] md:h-[260px] w-full">
+          <div className="relative group mb-12 overflow-hidden rounded-2xl border border-slate-800 bg-[#0e1420] shadow-2xl min-h-[360px] md:min-h-[280px] md:h-[280px] w-full">
             {featuredItems.map((item, idx) => {
               const isActive = idx === carouselIndex;
               return (
@@ -211,7 +212,7 @@ export default function NewsSection({ initialArticles = [] }: NewsSectionProps) 
                   )}
 
                   {/* Texto do destaque */}
-                  <div className="flex-1 p-5 md:p-7 flex flex-col justify-center gap-3 z-20">
+                  <div className="flex-1 p-5 md:p-6 lg:p-7 flex flex-col justify-center gap-2.5 md:gap-3 z-20">
                     <div className="flex items-center gap-3 shrink-0">
                       <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${item.tagColor}`}>
                         {item.category}
@@ -220,14 +221,14 @@ export default function NewsSection({ initialArticles = [] }: NewsSectionProps) 
                       <span className="text-xs font-mono text-amber-400 font-semibold">★ Destaque</span>
                     </div>
 
-                    <h3 className="text-base sm:text-lg md:text-2xl font-black text-white hover:text-emerald-300 transition-colors leading-tight line-clamp-2">
-                      <Link href={item.type === "guia" ? `/guias/${item.slug}` : `/noticias/${item.slug}`}>
-                        {item.title}
+                    <h3 className="text-base sm:text-lg md:text-xl lg:text-2xl font-black text-white hover:text-emerald-300 transition-colors leading-snug">
+                      <Link href={item.type === "guia" ? `/guias/${item.slug}` : `/noticias/${item.slug}`} title={item.title}>
+                        {truncateText(item.title, 60)}
                       </Link>
                     </h3>
 
-                    <p className="text-xs sm:text-sm text-slate-300 leading-relaxed line-clamp-2 md:line-clamp-3">
-                      {item.summary}
+                    <p className="text-xs sm:text-sm text-slate-300 leading-relaxed line-clamp-2" title={item.summary}>
+                      {truncateText(item.summary, 125)}
                     </p>
 
                     <div className="pt-1.5 shrink-0">

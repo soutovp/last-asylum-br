@@ -16,7 +16,12 @@ export type HeroDamageType = 'Physical' | 'Energy' | 'Mixed';
 
 export type HeroPosition = 'Frontline' | 'Backline' | 'Flexible';
 
-export type SkillType = 'Ultimate' | 'Ativa' | 'Passiva';
+export type SkillType =
+  | 'Ultimate'
+  | 'Ativa'
+  | 'Passiva'
+  | 'Ataque Automático'
+  | 'Habilidade de Suporte';
 
 export type HeroAvailabilityFilter = 'all' | 'available' | 'upcoming';
 

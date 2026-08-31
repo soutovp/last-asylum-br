@@ -3,7 +3,10 @@ import Image from "next/image";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import HeroesLanding from "@/components/heroes/HeroesLanding";
-import { getAllHeroes } from "@/lib/heroes";
+import { getAllHeroesAsync } from "@/lib/heroes";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export const metadata: Metadata = {
   title: "Central de Heróis — Guia Completo, Habilidades e Desbloqueio | Last Asylum BR",
@@ -51,8 +54,8 @@ export const metadata: Metadata = {
   },
 };
 
-export default function HeroesPage() {
-  const allHeroes = getAllHeroes();
+export default async function HeroesPage() {
+  const allHeroes = await getAllHeroesAsync();
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -102,7 +105,7 @@ export default function HeroesPage() {
     <div className="relative min-h-screen flex flex-col bg-[#080c14] text-slate-100 selection:bg-[#00ff88] selection:text-slate-950 overflow-x-hidden">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
       />
 
       {/* BACKGROUND FIXO DA VILA PARA PAGINAS INTERNAS (OPACIDADE 85%) */}
@@ -124,7 +127,7 @@ export default function HeroesPage() {
         <Header />
 
         <main className="flex-1 py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
-          <HeroesLanding />
+          <HeroesLanding initialHeroes={allHeroes} />
         </main>
         <Footer />
       </div>

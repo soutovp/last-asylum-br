@@ -4,10 +4,14 @@ import { notFound } from "next/navigation";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import HeroDetail from "@/components/heroes/HeroDetail";
-import { getAllHeroes, getHeroBySlug, getFactionLabel, getRoleLabel } from "@/lib/heroes";
+import { getAllHeroesAsync, getHeroBySlugAsync, getFactionLabel, getRoleLabel, sanitizeSlug, sanitizeUrl } from "@/lib/heroes";
 
-export function generateStaticParams() {
-  return getAllHeroes().map((hero) => ({
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+export async function generateStaticParams() {
+  const heroes = await getAllHeroesAsync();
+  return heroes.map((hero) => ({
     slug: hero.slug,
   }));
 }
@@ -18,7 +22,15 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const hero = getHeroBySlug(slug);
+  const safeSlug = sanitizeSlug(slug);
+  if (!safeSlug) {
+    return {
+      title: "Herói Não Encontrado | Last Asylum BR",
+      description: "O herói solicitado não foi encontrado na base de dados do Last Asylum BR.",
+    };
+  }
+
+  const hero = await getHeroBySlugAsync(safeSlug);
 
   if (!hero) {
     return {
@@ -32,8 +44,11 @@ export async function generateMetadata({
   const unlockText = hero.unlockInfo.serverDay === 1 ? "Dia 1" : `Dia ${hero.unlockInfo.serverDay}`;
   const title = `${hero.name} — Guia de Herói, Habilidades e Desbloqueio | Last Asylum BR`;
   const description = `Guia completo de ${hero.name} (${hero.title}) no Last Asylum: Plague. Veja habilidades, progressão de estrelas, facção ${factionText}, desbloqueio no ${unlockText} e calculadoras de evolução.`;
-  const url = `https://lastasylumbr.com.br/herois/${hero.slug}`;
-  const imageUrl = hero.avatarUrl || hero.fullImageUrl || "https://res.cloudinary.com/orrs3pvy/image/upload/v1786313785/preview-link-url_rcc5uk.webp";
+  const url = `https://lastasylumbr.com.br/herois/${sanitizeSlug(hero.slug)}`;
+  const imageUrl = sanitizeUrl(
+    hero.avatarUrl || hero.fullImageUrl,
+    "https://res.cloudinary.com/orrs3pvy/image/upload/v1786313785/preview-link-url_rcc5uk.webp"
+  );
 
   return {
     title,
@@ -80,7 +95,15 @@ export async function generateMetadata({
 
 export default async function HeroPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const hero = getHeroBySlug(slug);
+  const safeSlug = sanitizeSlug(slug);
+  if (!safeSlug) {
+    notFound();
+  }
+
+  const [hero, allHeroes] = await Promise.all([
+    getHeroBySlugAsync(safeSlug),
+    getAllHeroesAsync(),
+  ]);
 
   if (!hero) {
     notFound();
@@ -138,7 +161,7 @@ export default async function HeroPage({ params }: { params: Promise<{ slug: str
     <div className="relative min-h-screen flex flex-col bg-[#080c14] text-slate-100 selection:bg-[#00ff88] selection:text-slate-950 overflow-x-hidden">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }}
       />
 
       {/* BACKGROUND FIXO DA VILA PARA PAGINAS INTERNAS */}
@@ -160,7 +183,7 @@ export default async function HeroPage({ params }: { params: Promise<{ slug: str
         <Header />
 
         <main className="flex-1 py-12 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
-          <HeroDetail hero={hero} />
+          <HeroDetail hero={hero} initialAllHeroes={allHeroes} />
         </main>
         <Footer />
       </div>

@@ -6,6 +6,7 @@
  * Data de Atualização: 2026-08-23
  */
 
+import { cache } from "react";
 import {
   HEROES_DATA,
   Hero,
@@ -23,6 +24,29 @@ import {
   SkillType,
 } from "../data/heroes";
 import { isSupabaseConfigured } from "./supabase";
+
+/**
+ * Executa uma Promise com limite de tempo (timeout) de segurança para evitar travamentos (DoS/Hanging) no SSR.
+ */
+async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number = 3500,
+  fallbackValue: T
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  const timeoutPromise = new Promise<T>((resolve) => {
+    timer = setTimeout(() => resolve(fallbackValue), timeoutMs);
+  });
+
+  try {
+    const result = await Promise.race([promise, timeoutPromise]);
+    return result;
+  } catch {
+    return fallbackValue;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
 
 // Chaves de armazenamento LocalStorage
 export const HEROES_STORAGE_KEY = "admin_heroes_data";
@@ -112,47 +136,95 @@ export interface HeroValidationResult {
 // =========================================================================
 
 /**
- * Sanitiza e normaliza uma string removendo tags HTML e limitando o tamanho para evitar XSS e buffer overflow.
+ * Sanitiza e normaliza uma string removendo tags HTML, scripts e caracteres de controle perigosos.
  */
 export function sanitizeText(input: unknown, maxLength: number = 500): string {
   if (typeof input !== "string") return "";
-  return input
+  let clean = input
     .replace(/<[^>]*>/g, "") // Remove tags HTML/XML
     .replace(/[\u0000-\u0008\u000B-\u000C\u000E-\u001F\u007F]/g, "") // Remove caracteres de controle
-    .trim()
-    .slice(0, maxLength);
+    .trim();
+
+  // Remove tentativas de tag aninhada (ex: <<script>script>) com limite de iterações contra ReDoS
+  let iterations = 0;
+  while (clean.includes("<") && clean.includes(">") && iterations < 5) {
+    clean = clean.replace(/<[^>]*>/g, "");
+    iterations++;
+  }
+  clean = clean.replace(/[<>]/g, "");
+
+  return clean.slice(0, maxLength);
 }
 
 /**
- * Valida e sanitiza URLs permitindo apenas protocolos seguros (http, https, caminhos relativos e base64 de imagem).
- * Bloqueia expressamente javascript:, vbscript:, data:text/html e outros vetores maliciosos de XSS/Open-Redirect.
+ * Valida e sanitiza URLs permitindo apenas protocolos seguros (http, https, caminhos relativos e base64 de imagem raster).
+ * Bloqueia expressamente javascript:, vbscript:, data:text/html, data:image/svg+xml e outros vetores maliciosos de XSS/Open-Redirect.
  */
 export function sanitizeUrl(url: unknown, defaultUrl: string = ""): string {
   if (typeof url !== "string") return defaultUrl;
   const trimmed = url.trim();
   if (!trimmed) return defaultUrl;
 
-  // Bloqueia expressamente protocolos perigosos
-  if (/^(javascript|vbscript|data(?!\s*:\s*image\/)):/i.test(trimmed)) {
+  // Bloqueia expressamente protocolos perigosos e pseudo-protocolos
+  if (/^(javascript|vbscript|data(?!\s*:\s*image\/(webp|png|jpeg|jpg|gif|avif));|file|blob):/i.test(trimmed)) {
     return defaultUrl;
   }
 
   // Permite caminhos relativos internos seguros (/herois/..., /calculadoras...)
-  if (trimmed.startsWith("/") && !trimmed.startsWith("//")) {
+  // Bloqueia protocol-relative (//exemplo.com) e backslashes
+  if (trimmed.startsWith("/") && !trimmed.startsWith("//") && !trimmed.includes("\\")) {
     return trimmed.slice(0, 1000);
   }
 
   // Permite URLs absolutas HTTP/HTTPS válidas
-  if (/^https?:\/\/[^\s/$.?#].[^\s]*$/i.test(trimmed)) {
+  if (/^https?:\/\/[a-zA-Z0-9][-a-zA-Z0-9@:%._+~#=]{0,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_+.~#?&/=]*)$/i.test(trimmed)) {
     return trimmed.slice(0, 1000);
   }
 
-  // Permite imagens Data URI WebP, PNG, JPEG, GIF seguras
-  if (/^data:image\/(webp|png|jpeg|jpg|gif|svg\+xml);base64,[A-Za-z0-9+/=]+$/i.test(trimmed)) {
+  // Permite imagens Data URI raster WebP, PNG, JPEG, GIF, AVIF seguras (até 2MB)
+  if (/^data:image\/(webp|png|jpeg|jpg|gif|avif);base64,[A-Za-z0-9+/=]+$/i.test(trimmed) && trimmed.length <= 2 * 1024 * 1024) {
     return trimmed;
   }
 
   return defaultUrl;
+}
+
+/**
+ * Sanitiza o mapa de bônus de atributos garantindo chaves seguras e prevenindo prototype pollution.
+ */
+export function sanitizeBonusStats(
+  stats: unknown,
+  maxEntries: number = 10
+): Record<string, string | number> | undefined {
+  if (!stats || typeof stats !== "object" || Array.isArray(stats) || stats === null) {
+    return undefined;
+  }
+  const cleanMap: Record<string, string | number> = Object.create(null);
+  const entries = Object.entries(stats as Record<string, unknown>).slice(0, maxEntries);
+  let validCount = 0;
+  for (const [key, value] of entries) {
+    if (
+      !key ||
+      key === "__proto__" ||
+      key === "constructor" ||
+      key === "prototype" ||
+      key.includes(".") ||
+      key.length > 50
+    ) {
+      continue;
+    }
+    const cleanKey = sanitizeText(key, 50);
+    if (!cleanKey || cleanKey === "__proto__" || cleanKey === "constructor" || cleanKey === "prototype") continue;
+
+    if (typeof value === "number" && !isNaN(value) && isFinite(value)) {
+      cleanMap[cleanKey] = value;
+      validCount++;
+    } else if (typeof value === "string") {
+      cleanMap[cleanKey] = sanitizeText(value, 100);
+      validCount++;
+    }
+  }
+  return validCount > 0 ? { ...cleanMap } : undefined;
 }
 
 /**
@@ -174,20 +246,133 @@ export function sanitizeStringArray(
 /**
  * Sanitiza e normaliza uma string para se tornar um slug URL seguro.
  */
-export function sanitizeSlug(input: string): string {
+export function sanitizeSlug(input: unknown): string {
   if (!input || typeof input !== "string") return "";
   return input
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "") // Remove acentos
     .toLowerCase()
     .trim()
-    .replace(/[^a-z0-9]+/g, "-") // Converte caracteres especiais em hífen
+    .replace(/[^a-z0-9-]+/g, "-") // Converte caracteres especiais em hífen
     .replace(/^-+|-+$/g, "") // Remove hífens no início e fim
     .slice(0, 80); // Limite de 80 caracteres
 }
 
+export const VALID_SKILL_TYPES: SkillType[] = [
+  "Ultimate",
+  "Ativa",
+  "Passiva",
+  "Ataque Automático",
+  "Habilidade de Suporte",
+];
+
 /**
- * Cria a estrutura padrão de 3 habilidades completas com progressão de estrelas para novos heróis.
+ * Normaliza e resolve aliases de tipos de habilidades para garantir compatibilidade retroativa e internacional.
+ */
+export function normalizeSkillType(type: unknown, fallback: SkillType = "Ativa"): SkillType {
+  if (typeof type !== "string") return fallback;
+  const t = type.trim().toLowerCase();
+
+  if (t === "ultimate" || t === "suprema" || t === "ult" || t.includes("ultimate") || t.includes("suprema")) {
+    return "Ultimate";
+  }
+  if (
+    t === "ativa" ||
+    t === "ativo" ||
+    t === "active" ||
+    t === "tatica" ||
+    t === "tática" ||
+    t.includes("ativa") ||
+    t.includes("active")
+  ) {
+    return "Ativa";
+  }
+  if (
+    t === "passiva" ||
+    t === "passivo" ||
+    t === "passive" ||
+    t.includes("passiva") ||
+    t.includes("passive")
+  ) {
+    return "Passiva";
+  }
+  if (
+    t === "ataque automático" ||
+    t === "ataque automatico" ||
+    t === "auto attack" ||
+    t === "auto-attack" ||
+    t === "autoattack" ||
+    t === "auto_attack" ||
+    t === "basico" ||
+    t === "básico" ||
+    t.includes("auto attack") ||
+    t.includes("ataque auto")
+  ) {
+    return "Ataque Automático";
+  }
+  if (
+    t === "habilidade de suporte" ||
+    t === "suporte" ||
+    t === "support" ||
+    t === "support skill" ||
+    t === "support_skill" ||
+    t.includes("suporte") ||
+    t.includes("support")
+  ) {
+    return "Habilidade de Suporte";
+  }
+
+  return fallback;
+}
+
+/**
+ * Formata o rótulo de estrelas e evolução de estrela vermelha do Last Asylum:
+ * 1: '1⭐', 2: '2⭐', 3: '3⭐', 4: '4⭐', 5: '5⭐'
+ * 6: '🔴1 (6★)', 7: '🔴2 (7★)', 8: '🔴3 (8★)', 9: '🔴4 (9★)', 10: '🔴5 (10★)'
+ */
+export function formatStarLabel(starsRequired: number): string {
+  const num = typeof starsRequired === "number" && !isNaN(starsRequired)
+    ? Math.max(1, Math.min(10, Math.floor(starsRequired)))
+    : 1;
+
+  switch (num) {
+    case 1:
+      return "1⭐";
+    case 2:
+      return "2⭐";
+    case 3:
+      return "3⭐";
+    case 4:
+      return "4⭐";
+    case 5:
+      return "5⭐";
+    case 6:
+      return "🔴1 (6★)";
+    case 7:
+      return "🔴2 (7★)";
+    case 8:
+      return "🔴3 (8★)";
+    case 9:
+      return "🔴4 (9★)";
+    case 10:
+      return "🔴5 (10★)";
+    default:
+      return num <= 5 ? `${num}⭐` : `🔴${num - 5} (${num}★)`;
+  }
+}
+
+/**
+ * Retorna a lista de opções de estrelas (1 a 10) com seus respectivos rótulos formatados.
+ */
+export function getAvailableStarOptions(): Array<{ value: number; label: string }> {
+  return [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((star) => ({
+    value: star,
+    label: formatStarLabel(star),
+  }));
+}
+
+/**
+ * Cria a estrutura padrão de até 5 habilidades completas com progressão de estrelas para novos heróis.
  */
 export function createDefaultSkillsTemplate(
   heroId: string,
@@ -204,11 +389,11 @@ export function createDefaultSkillsTemplate(
       damageType,
       description: "Libera o poder supremo causando dano massivo em área a todos os inimigos.",
       progression: [
-        { starLevel: "2★", starsRequired: 2, title: "Impacto Fortalecido", description: "Dano base aumentado em +25%." },
-        { starLevel: "4★", starsRequired: 4, title: "Duração Aumentada", description: "Efeitos residuais duram +2 segundos adicionais." },
-        { starLevel: "6★ (🔴1)", starsRequired: 6, title: "Golpe Crítico", description: "Aumenta chance de crítico em alvos afetados." },
-        { starLevel: "8★ (🔴3)", starsRequired: 8, title: "Aceleração de Energia", description: "Reduz o tempo de recarga da Ultimate em 3s." },
-        { starLevel: "10★ (🔴5)", starsRequired: 10, title: "Poder Máximo", description: "Amplifica o dano total causado pela equipe em +30%." },
+        { starLevel: formatStarLabel(2), starsRequired: 2, title: "Impacto Fortalecido", description: "Dano base aumentado em +25%." },
+        { starLevel: formatStarLabel(4), starsRequired: 4, title: "Duração Aumentada", description: "Efeitos residuais duram +2 segundos adicionais." },
+        { starLevel: formatStarLabel(6), starsRequired: 6, title: "Golpe Crítico", description: "Aumenta chance de crítico em alvos afetados." },
+        { starLevel: formatStarLabel(8), starsRequired: 8, title: "Aceleração de Energia", description: "Reduz o tempo de recarga da Ultimate em 3s." },
+        { starLevel: formatStarLabel(10), starsRequired: 10, title: "Poder Máximo", description: "Amplifica o dano total causado pela equipe em +30%." },
       ],
     },
     {
@@ -219,11 +404,11 @@ export function createDefaultSkillsTemplate(
       damageType,
       description: "Desfere ataque tático coordenado contra alvos na linha de frente.",
       progression: [
-        { starLevel: "2★", starsRequired: 2, title: "Alcance Expandido", description: "Atinge alvos adjacentes ao alvo principal." },
-        { starLevel: "4★", starsRequired: 4, title: "Penetração de Defesa", description: "Reduz a defesa do alvo em 20% por 5 segundos." },
-        { starLevel: "6★ (🔴1)", starsRequired: 6, title: "Controle de Grupo", description: "Aplica lentidão ou atordoamento leve ao impactar." },
-        { starLevel: "8★ (🔴3)", starsRequired: 8, title: "Recarga Rápida", description: "Reduz o tempo de recarga da habilidade em 2s." },
-        { starLevel: "10★ (🔴5)", starsRequired: 10, title: "Golpe Devastador", description: "Causa dano adicional proporcional à vida perdida do alvo." },
+        { starLevel: formatStarLabel(2), starsRequired: 2, title: "Alcance Expandido", description: "Atinge alvos adjacentes ao alvo principal." },
+        { starLevel: formatStarLabel(4), starsRequired: 4, title: "Penetração de Defesa", description: "Reduz a defesa do alvo em 20% por 5 segundos." },
+        { starLevel: formatStarLabel(6), starsRequired: 6, title: "Controle de Grupo", description: "Aplica lentidão ou atordoamento leve ao impactar." },
+        { starLevel: formatStarLabel(8), starsRequired: 8, title: "Recarga Rápida", description: "Reduz o tempo de recarga da habilidade em 2s." },
+        { starLevel: formatStarLabel(10), starsRequired: 10, title: "Golpe Devastador", description: "Causa dano adicional proporcional à vida perdida do alvo." },
       ],
     },
     {
@@ -233,11 +418,41 @@ export function createDefaultSkillsTemplate(
       damageType: "None",
       description: "Aumenta os atributos gerais dos companheiros de equipe em combate.",
       progression: [
-        { starLevel: "2★", starsRequired: 2, title: "Presença Heroica", description: "Bônus passivo de atributos aumentado para +15%." },
-        { starLevel: "4★", starsRequired: 4, title: "Resiliência", description: "Aumenta a resistência a danos recebidos em combate." },
-        { starLevel: "6★ (🔴1)", starsRequired: 6, title: "Inspiração", description: "Acelera a taxa de recuperação de energia da equipe." },
-        { starLevel: "8★ (🔴3)", starsRequired: 8, title: "Tenacidade", description: "Reduz o tempo de efeitos negativos sofridos em 25%." },
-        { starLevel: "10★ (🔴5)", starsRequired: 10, title: "Legado Heroico", description: "Concede bônus persistente mesmo após ser abatido." },
+        { starLevel: formatStarLabel(2), starsRequired: 2, title: "Presença Heroica", description: "Bônus passivo de atributos aumentado para +15%." },
+        { starLevel: formatStarLabel(4), starsRequired: 4, title: "Resiliência", description: "Aumenta a resistência a danos recebidos em combate." },
+        { starLevel: formatStarLabel(6), starsRequired: 6, title: "Inspiração", description: "Acelera a taxa de recuperação de energia da equipe." },
+        { starLevel: formatStarLabel(8), starsRequired: 8, title: "Tenacidade", description: "Reduz o tempo de efeitos negativos sofridos em 25%." },
+        { starLevel: formatStarLabel(10), starsRequired: 10, title: "Legado Heroico", description: "Concede bônus persistente mesmo após ser abatido." },
+      ],
+    },
+    {
+      id: `${safeId}-auto-attack`,
+      name: "Sequência de Ataque Básico",
+      type: "Ataque Automático",
+      cooldown: "3s",
+      damageType,
+      description: "Desfere sequência regular de golpes normais contra o alvo mais próximo.",
+      progression: [
+        { starLevel: formatStarLabel(2), starsRequired: 2, title: "Cadência Rápida", description: "Aumenta a velocidade de ataque básico em +15%." },
+        { starLevel: formatStarLabel(4), starsRequired: 4, title: "Golpe Penetrante", description: "Ataques básicos ignoram 10% da armadura do inimigo." },
+        { starLevel: formatStarLabel(6), starsRequired: 6, title: "Foco de Energia", description: "Gera energia extra a cada sequência completa de golpes." },
+        { starLevel: formatStarLabel(8), starsRequired: 8, title: "Precisão Fatal", description: "Aumenta a taxa crítica do ataque automático em +20%." },
+        { starLevel: formatStarLabel(10), starsRequired: 10, title: "Tempestade de Golpes", description: "Chance de desferir golpe duplo sem custo de intervalo." },
+      ],
+    },
+    {
+      id: `${safeId}-support`,
+      name: "Suporte Tático de Esquadrão",
+      type: "Habilidade de Suporte",
+      cooldown: "12s",
+      damageType: "None",
+      description: "Concede proteção tática e assistência de combate ao esquadrão aliado.",
+      progression: [
+        { starLevel: formatStarLabel(2), starsRequired: 2, title: "Escudo Reforçado", description: "Aumenta a absorção de escudo ou cura em +20%." },
+        { starLevel: formatStarLabel(4), starsRequired: 4, title: "Amparo Coletivo", description: "Estende o efeito benéfico para todos os aliados em campo." },
+        { starLevel: formatStarLabel(6), starsRequired: 6, title: "Purificação", description: "Remove efeitos negativos do aliado mais fragilizado." },
+        { starLevel: formatStarLabel(8), starsRequired: 8, title: "Prontidão Operacional", description: "Reduz o tempo de recarga da habilidade em 2 segundos." },
+        { starLevel: formatStarLabel(10), starsRequired: 10, title: "Bênção Suprema", description: "Aliados protegidos recebem regeneração acelerada de energia." },
       ],
     },
   ];
@@ -340,14 +555,88 @@ export function validateHero(hero: Partial<Hero>): HeroValidationResult {
   const heroId = sanitizeSlug(hero.id && hero.id.trim() ? hero.id.trim() : slug) || slug;
 
   const validTiers: Array<NonNullable<Hero["tier"]>> = ["S+", "S", "A+", "A", "B"];
+  const rawTier = hero.tier ? (hero.tier.trim() as NonNullable<Hero["tier"]>) : undefined;
   const sanitizedTier: Hero["tier"] =
-    hero.tier && validTiers.includes(hero.tier.trim() as any)
-      ? (hero.tier.trim() as NonNullable<Hero["tier"]>)
-      : "S";
+    rawTier && validTiers.includes(rawTier) ? rawTier : "S";
 
   const sanitizedAvatar = sanitizeUrl(hero.avatarUrl, "/images/heroes/placeholder.webp");
   const sanitizedFullImage = sanitizeUrl(hero.fullImageUrl, sanitizedAvatar);
   const sanitizedBanner = sanitizeUrl(hero.bannerUrl, "");
+
+  // Sanitizador estrito de listas de vínculos (IDs/slugs de heróis em sinergia ou contra-ataque)
+  const sanitizeHeroSlugList = (list: unknown): string[] => {
+    if (!Array.isArray(list)) return [];
+    const unique = new Set<string>();
+    for (const item of list) {
+      if (typeof item === "string") {
+        const clean = sanitizeSlug(item);
+        if (clean && clean !== heroId && clean !== slug) {
+          unique.add(clean);
+        }
+      }
+    }
+    return Array.from(unique).slice(0, 15);
+  };
+
+  // Sanitização e validação de até 5 habilidades com 5 tipos permitidos e progressões ordenadas
+  const rawSkills = Array.isArray(hero.skills) && hero.skills.length > 0
+    ? hero.skills.slice(0, 5)
+    : createDefaultSkillsTemplate(heroId, hero.damageType as HeroDamageType);
+
+  const sanitizedSkills: HeroSkill[] = rawSkills.map((s, idx) => {
+    const defaultTypes: SkillType[] = ["Ultimate", "Ativa", "Passiva", "Ataque Automático", "Habilidade de Suporte"];
+    const skillType = normalizeSkillType(s.type, defaultTypes[idx] || "Ativa");
+    const skillId = sanitizeSlug(s.id) || `${heroId}-skill-${idx + 1}`;
+    const skillName = sanitizeText(s.name, 100) || `Habilidade ${idx + 1}`;
+    const skillDesc = sanitizeText(s.description, 2000) || "Descrição da habilidade de combate.";
+    const skillCooldown = sanitizeText(s.cooldown, 20) || (idx === 0 ? "16s" : idx === 1 ? "10s" : idx === 3 ? "3s" : idx === 4 ? "12s" : undefined);
+    const skillEnergy = typeof s.energyCost === "number" && !isNaN(s.energyCost)
+      ? Math.max(0, Math.min(10000, Math.floor(s.energyCost)))
+      : (idx === 0 ? 1000 : undefined);
+    const skillDmgType = (["Physical", "Energy", "Mixed", "None"].includes(s.damageType as string)
+      ? s.damageType
+      : (hero.damageType as HeroDamageType));
+    const skillIcon = sanitizeUrl(s.icon, "");
+
+    const rawProgression: SkillProgressionStep[] = Array.isArray(s.progression) && s.progression.length > 0
+      ? s.progression
+      : [
+          { starLevel: formatStarLabel(2), starsRequired: 2, title: "Aprimoramento I", description: "Aumenta a eficácia da habilidade em +20%." },
+          { starLevel: formatStarLabel(4), starsRequired: 4, title: "Aprimoramento II", description: "Aumenta o dano ou duração do efeito." },
+          { starLevel: formatStarLabel(6), starsRequired: 6, title: "Efeito Adicional", description: "Adiciona bônus especial à habilidade." },
+          { starLevel: formatStarLabel(8), starsRequired: 8, title: "Maestria de Batalha", description: "Reduz recarga ou amplifica poder passivo." },
+          { starLevel: formatStarLabel(10), starsRequired: 10, title: "Despertar Supremo", description: "Efeito destrutivo de nível máximo." },
+        ];
+
+    const sanitizedProgression: SkillProgressionStep[] = rawProgression
+      .map((p) => {
+        const item = p as Partial<SkillProgressionStep>;
+        const starsReq = typeof item.starsRequired === "number" && !isNaN(item.starsRequired)
+          ? Math.max(1, Math.min(10, Math.floor(item.starsRequired)))
+          : 2;
+        return {
+          starsRequired: starsReq,
+          starLevel: sanitizeText(item.starLevel, 30) || formatStarLabel(starsReq),
+          title: sanitizeText(item.title, 100),
+          description: sanitizeText(item.description, 1000) || "Melhoria de atributos no nível de estrela.",
+          bonusStats: sanitizeBonusStats(item.bonusStats),
+        };
+      })
+      .sort((a, b) => a.starsRequired - b.starsRequired)
+      .slice(0, 10);
+
+    return {
+      id: skillId,
+      name: skillName,
+      type: skillType,
+      description: skillDesc,
+      cooldown: skillCooldown,
+      energyCost: skillEnergy,
+      damageType: skillDmgType,
+      icon: skillIcon,
+      progression: sanitizedProgression,
+    };
+  });
 
   const sanitized: Hero = {
     id: heroId,
@@ -361,29 +650,26 @@ export function validateHero(hero: Partial<Hero>): HeroValidationResult {
     avatarUrl: sanitizedAvatar,
     fullImageUrl: sanitizedFullImage,
     bannerUrl: sanitizedBanner,
-    bio: sanitizeText(hero.bio, 2000) || `Guia estratégico e dados de combate de ${rawName}.`,
-    lore: sanitizeText(hero.lore, 5000),
+    bio: sanitizeText(hero.bio, 5000) || `Guia estratégico e dados de combate de ${rawName}.`,
+    lore: sanitizeText(hero.lore, 8000),
     quote: sanitizeText(hero.quote, 300),
     tier: sanitizedTier,
     combatProfile: {
       tags: Array.isArray(hero.combatProfile?.tags) && hero.combatProfile!.tags.length > 0
         ? sanitizeStringArray(hero.combatProfile!.tags, 40, 20)
         : [hero.role as string, hero.faction as string],
-      position: (["Frontline", "Backline", "Flexible"].includes(hero.combatProfile?.position as any)
-        ? hero.combatProfile!.position
-        : hero.role === "Tank" ? "Frontline" : "Backline") as HeroPosition,
+      position: (hero.combatProfile?.position &&
+        ["Frontline", "Backline", "Flexible"].includes(hero.combatProfile.position)
+          ? hero.combatProfile.position
+          : hero.role === "Tank" ? "Frontline" : "Backline") as HeroPosition,
       pros: Array.isArray(hero.combatProfile?.pros) && hero.combatProfile!.pros.length > 0
         ? sanitizeStringArray(hero.combatProfile!.pros, 200, 10)
         : ["Alto potencial em composições dedicadas"],
       cons: Array.isArray(hero.combatProfile?.cons) && hero.combatProfile!.cons.length > 0
         ? sanitizeStringArray(hero.combatProfile!.cons, 200, 10)
         : ["Requer posicionamento cuidadoso"],
-      synergyWith: Array.isArray(hero.combatProfile?.synergyWith)
-        ? sanitizeStringArray(hero.combatProfile!.synergyWith, 60, 10)
-        : [],
-      counteredBy: Array.isArray(hero.combatProfile?.counteredBy)
-        ? sanitizeStringArray(hero.combatProfile!.counteredBy, 60, 10)
-        : [],
+      synergyWith: sanitizeHeroSlugList(hero.combatProfile?.synergyWith),
+      counteredBy: sanitizeHeroSlugList(hero.combatProfile?.counteredBy),
       bestFormation: sanitizeText(hero.combatProfile?.bestFormation, 300) || "Posicionamento tático de acordo com a função.",
       recommendedPositioningNote: sanitizeText(hero.combatProfile?.recommendedPositioningNote, 300),
     },
@@ -398,38 +684,7 @@ export function validateHero(hero: Partial<Hero>): HeroValidationResult {
       notes: sanitizeText(hero.unlockInfo?.notes, 500) || `Disponível a partir do dia ${serverDay} do servidor.`,
       isAvailableDay1: serverDay === 1,
     },
-    skills: Array.isArray(hero.skills) && hero.skills.length > 0
-      ? hero.skills.slice(0, 10).map((s, idx) => ({
-          id: sanitizeSlug(s.id) || `${heroId}-skill-${idx + 1}`,
-          name: sanitizeText(s.name, 100) || `Habilidade ${idx + 1}`,
-          type: (["Ultimate", "Ativa", "Passiva"].includes(s.type)
-            ? s.type
-            : idx === 0
-            ? "Ultimate"
-            : idx === 1
-            ? "Ativa"
-            : "Passiva") as SkillType,
-          description: sanitizeText(s.description, 1000) || "Descrição da habilidade de combate.",
-          cooldown: sanitizeText(s.cooldown, 20) || (idx === 0 ? "16s" : idx === 1 ? "10s" : undefined),
-          energyCost: typeof s.energyCost === "number" && !isNaN(s.energyCost) ? Math.max(0, Math.min(10000, Math.floor(s.energyCost))) : (idx === 0 ? 1000 : undefined),
-          damageType: (["Physical", "Energy", "Mixed", "None"].includes(s.damageType as string) ? s.damageType : (hero.damageType as HeroDamageType)),
-          icon: sanitizeUrl(s.icon, ""),
-          progression: Array.isArray(s.progression) && s.progression.length > 0
-            ? s.progression.slice(0, 10).map((p) => ({
-                starLevel: sanitizeText(p.starLevel, 30),
-                starsRequired: typeof p.starsRequired === "number" ? Math.max(1, Math.min(10, Math.floor(p.starsRequired))) : 2,
-                title: sanitizeText(p.title, 100),
-                description: sanitizeText(p.description, 500),
-              }))
-            : [
-                { starLevel: "2★", starsRequired: 2, title: "Aprimoramento I", description: "Aumenta a eficácia da habilidade em +20%." },
-                { starLevel: "4★", starsRequired: 4, title: "Aprimoramento II", description: "Aumenta o dano ou duração do efeito." },
-                { starLevel: "6★ (🔴1)", starsRequired: 6, title: "Efeito Adicional", description: "Adiciona bônus especial à habilidade." },
-                { starLevel: "8★ (🔴3)", starsRequired: 8, title: "Maestria de Batalha", description: "Reduz recarga ou amplifica poder passivo." },
-                { starLevel: "10★ (🔴5)", starsRequired: 10, title: "Despertar Supremo", description: "Efeito destrutivo de nível máximo." },
-              ],
-        }))
-      : createDefaultSkillsTemplate(heroId, hero.damageType as HeroDamageType),
+    skills: sanitizedSkills,
     calculatorLinks: {
       antitoxinUrl: sanitizeUrl(hero.calculatorLinks?.antitoxinUrl, `/calculadoras?tab=antitoxin&hero=${slug}`),
       shardsUrl: sanitizeUrl(hero.calculatorLinks?.shardsUrl, `/calculadoras?tab=shards&hero=${slug}`),
@@ -459,7 +714,11 @@ export function getAllHeroes(): Hero[] {
   try {
     const raw = localStorage.getItem(HEROES_STORAGE_KEY);
     if (!raw) {
-      localStorage.setItem(HEROES_STORAGE_KEY, JSON.stringify(HEROES_DATA));
+      try {
+        localStorage.setItem(HEROES_STORAGE_KEY, JSON.stringify(HEROES_DATA));
+      } catch {
+        // Ignora erro de quota na inicialização
+      }
       return HEROES_DATA;
     }
 
@@ -482,73 +741,168 @@ export function getAllHeroes(): Hero[] {
   return HEROES_DATA;
 }
 
+interface SupabaseHeroRecord {
+  id?: string;
+  name?: string;
+  slug?: string;
+  title?: string;
+  rarity?: HeroRarity;
+  faction?: HeroFaction;
+  role?: HeroRole;
+  damage_type?: HeroDamageType;
+  damageType?: HeroDamageType;
+  avatar_url?: string;
+  avatarUrl?: string;
+  full_image_url?: string;
+  fullImageUrl?: string;
+  bio?: string;
+  combat_profile?: HeroCombatProfile;
+  unlock_info?: HeroUnlockInfo;
+  server_day?: number;
+  skills?: HeroSkill[];
+  calculator_links?: HeroCalculatorLinks;
+  source_urls?: string[];
+  last_verified_at?: string;
+  data?: Hero;
+}
+
 /**
- * Busca de forma assíncrona os heróis do Supabase (se configurado) atualizando o cache local com validação profunda.
+ * Converte e valida com segurança um registro bruto vindo do Supabase em um objeto Hero válido.
  */
-export async function fetchHeroesAsync(): Promise<Hero[]> {
+export function parseSupabaseHeroRecord(item: unknown): Hero | undefined {
+  if (!item || typeof item !== "object" || Array.isArray(item)) return undefined;
+
+  const rawItem = item as SupabaseHeroRecord;
+  let candidate: Partial<Hero>;
+
+  if (rawItem.data && typeof rawItem.data === "object" && !Array.isArray(rawItem.data)) {
+    candidate = rawItem.data;
+  } else {
+    candidate = {
+      id: rawItem.id,
+      name: rawItem.name || rawItem.id,
+      slug: rawItem.slug || rawItem.id,
+      title: rawItem.title || "",
+      rarity: rawItem.rarity || "UR",
+      faction: rawItem.faction || "Warrior",
+      role: rawItem.role || "Carry",
+      damageType: rawItem.damage_type || rawItem.damageType || "Physical",
+      avatarUrl: rawItem.avatar_url || rawItem.avatarUrl || "",
+      fullImageUrl: rawItem.full_image_url || rawItem.fullImageUrl || "",
+      bio: rawItem.bio || "",
+      combatProfile: rawItem.combat_profile || {
+        tags: [],
+        position: "Frontline",
+        pros: [],
+        cons: [],
+        synergyWith: [],
+        counteredBy: [],
+        bestFormation: "",
+      },
+      unlockInfo: rawItem.unlock_info || {
+        serverDay: rawItem.server_day || 1,
+        methods: [],
+        notes: "",
+        isAvailableDay1: (rawItem.server_day || 1) === 1,
+      },
+      skills: rawItem.skills || [],
+      calculatorLinks: rawItem.calculator_links || {
+        antitoxinUrl: "",
+        shardsUrl: "",
+        badgesUrl: "",
+      },
+      sourceUrls: rawItem.source_urls || [],
+      lastVerifiedAt: rawItem.last_verified_at || new Date().toISOString().slice(0, 10),
+    };
+  }
+
+  const val = validateHero(candidate);
+  if (val.isValid && val.sanitized) {
+    return val.sanitized;
+  }
+  return undefined;
+}
+
+/**
+ * Busca de forma assíncrona todos os heróis do Supabase (tabela 'heroes_config' com fallback para 'heroes')
+ * ordenados por 'server_day'. Valida cada registro com validateHero.
+ * Se falhar ou estiver offline, faz fallback para HEROES_DATA (ou localStorage se no navegador).
+ */
+export const getAllHeroesAsync = cache(async function getAllHeroesAsync(): Promise<Hero[]> {
   if (isSupabaseConfigured) {
     try {
       const { supabase } = await import("./supabase");
-      const { data, error } = await supabase
-        .from("heroes_config")
-        .select("*")
-        .order("server_day", { ascending: true });
 
-      if (!error && data && data.length > 0) {
-        const parsedHeroes: Hero[] = [];
+      const fetchAllFromSupabase = async (): Promise<Hero[] | null> => {
+        let data: SupabaseHeroRecord[] | null = null;
 
-        for (const item of data) {
-          let candidate: Partial<Hero>;
-          if (item.data && typeof item.data === "object") {
-            candidate = item.data as Hero;
-          } else {
-            candidate = {
-              id: item.id,
-              name: item.name || item.id,
-              slug: item.slug || item.id,
-              title: item.title || "",
-              rarity: item.rarity || "UR",
-              faction: item.faction || "Warrior",
-              role: item.role || "Carry",
-              damageType: item.damage_type || item.damageType || "Physical",
-              avatarUrl: item.avatar_url || item.avatarUrl || "",
-              fullImageUrl: item.full_image_url || item.fullImageUrl || "",
-              bio: item.bio || "",
-              combatProfile: item.combat_profile || { tags: [], position: "Frontline", pros: [], cons: [], synergyWith: [], counteredBy: [], bestFormation: "" },
-              unlockInfo: item.unlock_info || { serverDay: item.server_day || 1, methods: [], notes: "", isAvailableDay1: (item.server_day || 1) === 1 },
-              skills: item.skills || [],
-              calculatorLinks: item.calculator_links || { antitoxinUrl: "", shardsUrl: "", badgesUrl: "" },
-              sourceUrls: item.source_urls || [],
-              lastVerifiedAt: item.last_verified_at || new Date().toISOString().slice(0, 10),
-            };
-          }
+        const resConfig = await supabase
+          .from("heroes_config")
+          .select("*")
+          .order("server_day", { ascending: true })
+          .limit(150);
 
-          const val = validateHero(candidate);
-          if (val.isValid && val.sanitized) {
-            parsedHeroes.push(val.sanitized);
+        if (!resConfig.error && resConfig.data && resConfig.data.length > 0) {
+          data = resConfig.data as SupabaseHeroRecord[];
+        } else {
+          const resHeroes = await supabase
+            .from("heroes")
+            .select("*")
+            .order("server_day", { ascending: true })
+            .limit(150);
+          if (!resHeroes.error && resHeroes.data && resHeroes.data.length > 0) {
+            data = resHeroes.data as SupabaseHeroRecord[];
           }
         }
 
-        if (parsedHeroes.length > 0) {
-          if (typeof window !== "undefined") {
-            try {
-              localStorage.setItem(HEROES_STORAGE_KEY, JSON.stringify(parsedHeroes));
-              window.dispatchEvent(new CustomEvent("heroes_updated", { detail: { heroes: parsedHeroes } }));
-              window.dispatchEvent(new Event("heroes_updated"));
-            } catch (storageErr) {
-              console.warn("Aviso ao salvar heróis no localStorage (cota de storage):", storageErr);
+        if (data && data.length > 0) {
+          const parsedHeroes: Hero[] = [];
+          const maxRecords = Math.min(data.length, 150);
+
+          for (let i = 0; i < maxRecords; i++) {
+            const parsed = parseSupabaseHeroRecord(data[i]);
+            if (parsed) {
+              parsedHeroes.push(parsed);
             }
           }
-          return parsedHeroes;
+
+          if (parsedHeroes.length > 0) {
+            return parsedHeroes;
+          }
         }
+
+        return null;
+      };
+
+      const dbHeroes = await withTimeout(fetchAllFromSupabase(), 4000, null);
+      if (dbHeroes && dbHeroes.length > 0) {
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.setItem(HEROES_STORAGE_KEY, JSON.stringify(dbHeroes));
+            window.dispatchEvent(new CustomEvent("heroes_updated", { detail: { heroes: dbHeroes } }));
+            window.dispatchEvent(new Event("heroes_updated"));
+          } catch (storageErr) {
+            if (process.env.NODE_ENV !== "production") {
+              console.warn("Aviso ao salvar heróis no localStorage (cota de storage):", (storageErr as Error)?.message);
+            }
+          }
+        }
+        return dbHeroes;
       }
     } catch (err) {
-      console.warn("Supabase fetchHeroesAsync falhou, usando cache/fallback:", err);
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("Supabase getAllHeroesAsync falhou, usando cache/fallback:", (err as Error)?.message || "Erro desconhecido");
+      }
     }
   }
 
-  return getAllHeroes();
-}
+  return typeof window === "undefined" ? HEROES_DATA : getAllHeroes();
+});
+
+/**
+ * Alias de compatibilidade retroativa para getAllHeroesAsync
+ */
+export const fetchHeroesAsync = getAllHeroesAsync;
 
 /**
  * Salva ou atualiza um herói no armazenamento local e sincroniza com o Supabase se configurado.
@@ -566,7 +920,7 @@ export async function saveHero(heroData: Hero): Promise<{ success: boolean; hero
   const validHero = validation.sanitized;
   const currentList = getAllHeroes();
   const existingIndex = currentList.findIndex(
-    (h) => h.id === validHero.id || h.slug === validHero.slug
+    (h) => h.id.toLowerCase() === validHero.id.toLowerCase() || h.slug.toLowerCase() === validHero.slug.toLowerCase()
   );
 
   let updatedList: Hero[];
@@ -574,6 +928,10 @@ export async function saveHero(heroData: Hero): Promise<{ success: boolean; hero
     updatedList = [...currentList];
     updatedList[existingIndex] = validHero;
   } else {
+    // Proteção contra DoS / Array payload overflow (limite máximo de 100 heróis)
+    if (currentList.length >= 100) {
+      return { success: false, hero: validHero, error: "Limite máximo de 100 heróis no catálogo atingido." };
+    }
     updatedList = [...currentList, validHero];
   }
 
@@ -583,7 +941,7 @@ export async function saveHero(heroData: Hero): Promise<{ success: boolean; hero
       localStorage.setItem(HEROES_STORAGE_KEY, JSON.stringify(updatedList));
       window.dispatchEvent(new CustomEvent("heroes_updated", { detail: { heroes: updatedList } }));
       window.dispatchEvent(new Event("heroes_updated"));
-    } catch (err: any) {
+    } catch (err) {
       console.error("Erro ao salvar herói no localStorage:", err);
       return { success: false, hero: validHero, error: "Limite de armazenamento local (quota) atingido ou storage desabilitado." };
     }
@@ -636,8 +994,12 @@ export async function deleteHero(heroId: string): Promise<{ success: boolean; er
     return { success: false, error: "ID do herói inválido." };
   }
 
-  const currentList = getAllHeroes();
   const normalizedId = sanitizeSlug(heroId).toLowerCase();
+  if (!normalizedId) {
+    return { success: false, error: "ID do herói inválido." };
+  }
+
+  const currentList = getAllHeroes();
   const filtered = currentList.filter(
     (h) => h.id.toLowerCase() !== normalizedId && h.slug.toLowerCase() !== normalizedId
   );
@@ -661,10 +1023,12 @@ export async function deleteHero(heroId: string): Promise<{ success: boolean; er
   if (isSupabaseConfigured) {
     try {
       const { supabase } = await import("./supabase");
-      await supabase.from("heroes_config").delete().eq("id", heroId);
-      await supabase.from("heroes").delete().eq("id", heroId);
+      await supabase.from("heroes_config").delete().eq("id", normalizedId);
+      await supabase.from("heroes").delete().eq("id", normalizedId);
     } catch (supabaseErr) {
-      console.warn("Erro ao deletar herói no Supabase:", supabaseErr);
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("Erro ao deletar herói no Supabase:", (supabaseErr as Error)?.message);
+      }
     }
   }
 
@@ -706,7 +1070,9 @@ export async function resetHeroesToDefault(): Promise<{ success: boolean; heroes
 
       await supabase.from("heroes_config").upsert(records, { onConflict: "id" });
     } catch (supabaseErr) {
-      console.warn("Erro ao resetar heróis no Supabase:", supabaseErr);
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("Erro ao resetar heróis no Supabase:", (supabaseErr as Error)?.message);
+      }
     }
   }
 
@@ -735,7 +1101,9 @@ export function getServerSettings(): HeroServerSettings {
       };
     }
   } catch (err) {
-    console.warn("Erro ao ler configurações de servidor do herói:", err);
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("Erro ao ler configurações de servidor do herói:", (err as Error)?.message);
+    }
   }
 
   return DEFAULT_HERO_SERVER_SETTINGS;
@@ -797,7 +1165,9 @@ export async function saveServerSettings(
         { onConflict: "key" }
       );
     } catch (supabaseErr) {
-      console.warn("Erro ao sincronizar configurações de servidor no Supabase:", supabaseErr);
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("Erro ao sincronizar configurações de servidor no Supabase:", (supabaseErr as Error)?.message);
+      }
     }
   }
 
@@ -813,32 +1183,108 @@ export const updateServerSettings = saveServerSettings;
 /**
  * Busca um herói pelo seu slug amigável de URL (/herois/[slug])
  */
-export function getHeroBySlug(slug: string): Hero | undefined {
-  if (!slug) return undefined;
-  const normalizedSlug = slug.trim().toLowerCase();
-  const heroes = getAllHeroes();
+export function getHeroBySlug(slug: string, heroList?: Hero[]): Hero | undefined {
+  if (!slug || typeof slug !== "string") return undefined;
+  const normalizedSlug = sanitizeSlug(slug).toLowerCase();
+  if (!normalizedSlug) return undefined;
+
+  const heroes = heroList || (typeof window === "undefined" ? HEROES_DATA : getAllHeroes());
   return heroes.find(
     (hero) => hero.slug.toLowerCase() === normalizedSlug || hero.id.toLowerCase() === normalizedSlug
   );
 }
 
 /**
+ * Busca de forma assíncrona um herói no Supabase pelo slug amigável de URL (/herois/[slug]) ou ID.
+ * Normaliza o slug com sanitização estrita e busca na tabela 'heroes_config' com fallback para 'heroes'.
+ * Valida o registro com validateHero.
+ * Se não encontrar no banco ou se o Supabase estiver offline/erro, faz fallback seguro para getHeroBySlug local (HEROES_DATA).
+ */
+export const getHeroBySlugAsync = cache(async function getHeroBySlugAsync(slug: string): Promise<Hero | undefined> {
+  if (!slug || typeof slug !== "string") return undefined;
+
+  const cleanSlug = sanitizeSlug(slug).toLowerCase();
+  if (!cleanSlug || cleanSlug.length > 80) return undefined;
+
+  // Validação estrita de formato do slug: somente caracteres a-z, 0-9 e hífen
+  if (!/^[a-z0-9-]+$/.test(cleanSlug)) {
+    return undefined;
+  }
+
+  if (isSupabaseConfigured) {
+    try {
+      const { supabase } = await import("./supabase");
+
+      const fetchHero = async (): Promise<Hero | undefined> => {
+        // 1. Tenta buscar na tabela principal 'heroes_config'
+        const { data: configData, error: configError } = await supabase
+          .from("heroes_config")
+          .select("*")
+          .or(`slug.eq.${cleanSlug},id.eq.${cleanSlug}`)
+          .limit(1)
+          .maybeSingle();
+
+        if (!configError && configData) {
+          const parsed = parseSupabaseHeroRecord(configData as SupabaseHeroRecord);
+          if (parsed) return parsed;
+        }
+
+        // 2. Fallback para a tabela legada 'heroes'
+        const { data: heroesData, error: heroesError } = await supabase
+          .from("heroes")
+          .select("*")
+          .or(`slug.eq.${cleanSlug},id.eq.${cleanSlug}`)
+          .limit(1)
+          .maybeSingle();
+
+        if (!heroesError && heroesData) {
+          const parsed = parseSupabaseHeroRecord(heroesData as SupabaseHeroRecord);
+          if (parsed) return parsed;
+        }
+
+        return undefined;
+      };
+
+      const dbResult = await withTimeout(fetchHero(), 3500, undefined);
+      if (dbResult) {
+        return dbResult;
+      }
+    } catch (err) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("Supabase getHeroBySlugAsync falhou, usando fallback local:", (err as Error)?.message || "Erro desconhecido");
+      }
+    }
+  }
+
+  // 3. Fallback para dados locais (HEROES_DATA ou cache)
+  const localList = typeof window === "undefined" ? HEROES_DATA : getAllHeroes();
+  return getHeroBySlug(cleanSlug, localList);
+});
+
+/**
  * Busca um herói pelo seu ID identificador único
  */
-export function getHeroById(id: string): Hero | undefined {
+export function getHeroById(id: string, heroList?: Hero[]): Hero | undefined {
   if (!id) return undefined;
   const normalizedId = id.trim().toLowerCase();
-  const heroes = getAllHeroes();
+  const heroes = heroList || (typeof window === "undefined" ? HEROES_DATA : getAllHeroes());
   return heroes.find(
     (hero) => hero.id.toLowerCase() === normalizedId || hero.slug.toLowerCase() === normalizedId
   );
 }
 
 /**
+ * Busca de forma assíncrona um herói no Supabase pelo ID identificador único.
+ */
+export async function getHeroByIdAsync(id: string): Promise<Hero | undefined> {
+  return getHeroBySlugAsync(id);
+}
+
+/**
  * Filtra heróis por Facção (Warrior, Ranger, Warlock)
  */
-export function getHeroesByFaction(faction: HeroFaction | string): Hero[] {
-  const heroes = getAllHeroes();
+export function getHeroesByFaction(faction: HeroFaction | string, heroList?: Hero[]): Hero[] {
+  const heroes = heroList || (typeof window === "undefined" ? HEROES_DATA : getAllHeroes());
   if (!faction || faction === "Todos") return heroes;
   return heroes.filter((hero) => hero.faction.toLowerCase() === faction.toLowerCase());
 }
@@ -846,8 +1292,8 @@ export function getHeroesByFaction(faction: HeroFaction | string): Hero[] {
 /**
  * Filtra heróis por Função de Combate (Carry, Tank, Support)
  */
-export function getHeroesByRole(role: HeroRole | string): Hero[] {
-  const heroes = getAllHeroes();
+export function getHeroesByRole(role: HeroRole | string, heroList?: Hero[]): Hero[] {
+  const heroes = heroList || (typeof window === "undefined" ? HEROES_DATA : getAllHeroes());
   if (!role || role === "Todos") return heroes;
   return heroes.filter((hero) => hero.role.toLowerCase() === role.toLowerCase());
 }
@@ -871,24 +1317,75 @@ export function getHeroesByDamageType(damageType: HeroDamageType | string): Hero
 }
 
 /**
- * Retorna heróis recomendados / relacionados (mesma facção ou alta sinergia)
+ * Retorna heróis recomendados / relacionados (priorizando sinergia explícita e completando com mesma facção ou função).
  */
-export function getRelatedHeroes(hero: Hero, limit: number = 3): Hero[] {
+export function getRelatedHeroes(hero: Hero, limit: number = 3, heroList?: Hero[]): Hero[] {
   if (!hero) return [];
-  const heroes = getAllHeroes();
+  const heroes = heroList || (typeof window === "undefined" ? HEROES_DATA : getAllHeroes());
+  const heroIdNorm = (hero.id || "").trim().toLowerCase();
+  const heroSlugNorm = (hero.slug || "").trim().toLowerCase();
 
-  // Prioriza heróis com sinergia explícita
-  const synergyHeroes = hero.combatProfile.synergyWith
-    .map((synergyId) => getHeroById(synergyId))
-    .filter((h): h is Hero => h !== undefined && h.id !== hero.id);
+  const isSelf = (h: Hero) => {
+    const candidateId = (h.id || "").trim().toLowerCase();
+    const candidateSlug = (h.slug || "").trim().toLowerCase();
+    return (
+      candidateId === heroIdNorm ||
+      candidateSlug === heroSlugNorm ||
+      candidateId === heroSlugNorm ||
+      candidateSlug === heroIdNorm
+    );
+  };
 
-  // Se precisar de mais para completar o limite, busca da mesma facção
-  const sameFaction = heroes.filter(
-    (h) => h.id !== hero.id && h.faction === hero.faction && !synergyHeroes.some((s) => s.id === h.id)
-  );
+  const resultList: Hero[] = [];
+  const addedIds = new Set<string>();
 
-  const combined = [...synergyHeroes, ...sameFaction];
-  return combined.slice(0, limit);
+  const addHero = (candidate?: Hero) => {
+    if (!candidate || isSelf(candidate)) return;
+    const key = (candidate.id || candidate.slug || "").toLowerCase();
+    if (!addedIds.has(key)) {
+      addedIds.add(key);
+      resultList.push(candidate);
+    }
+  };
+
+  // 1. Prioriza heróis listados em combatProfile.synergyWith
+  if (Array.isArray(hero.combatProfile?.synergyWith)) {
+    for (const synergyRef of hero.combatProfile.synergyWith) {
+      if (resultList.length >= limit) break;
+      const found = getHeroById(synergyRef, heroes) || getHeroBySlug(synergyRef, heroes);
+      addHero(found);
+    }
+  }
+
+  // 2. Se faltar, preenche com heróis da mesma facção
+  if (resultList.length < limit) {
+    for (const candidate of heroes) {
+      if (resultList.length >= limit) break;
+      if (candidate.faction.toLowerCase() === hero.faction.toLowerCase()) {
+        addHero(candidate);
+      }
+    }
+  }
+
+  // 3. Se ainda faltar, preenche com heróis da mesma função (role)
+  if (resultList.length < limit) {
+    for (const candidate of heroes) {
+      if (resultList.length >= limit) break;
+      if (candidate.role.toLowerCase() === hero.role.toLowerCase()) {
+        addHero(candidate);
+      }
+    }
+  }
+
+  // 4. Se ainda faltar para preencher o limite, preenche com outros heróis da base
+  if (resultList.length < limit) {
+    for (const candidate of heroes) {
+      if (resultList.length >= limit) break;
+      addHero(candidate);
+    }
+  }
+
+  return resultList.slice(0, limit);
 }
 
 // =========================================================================

@@ -27,6 +27,8 @@ import {
   getRoleBadgeColor,
   sanitizeSlug,
   sanitizeText,
+  getAvailableStarOptions,
+  formatStarLabel,
 } from "@/lib/heroes";
 import { compressImageToWebp } from "@/lib/imageCompression";
 import { UserSession } from "@/lib/auth";
@@ -47,7 +49,7 @@ export default function AdminHeroManagement({ session }: AdminHeroManagementProp
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalTab, setModalTab] = useState<"identidade" | "combate" | "desbloqueio" | "habilidades" | "calculadoras">("identidade");
+  const [modalTab, setModalTab] = useState<"identidade" | "combate" | "desbloqueio" | "habilidades" | "sinergias" | "calculadoras">("identidade");
   const [editingHero, setEditingHero] = useState<Hero | null>(null);
   const [isNewHero, setIsNewHero] = useState(false);
   const [savingHero, setSavingHero] = useState(false);
@@ -61,9 +63,9 @@ export default function AdminHeroManagement({ session }: AdminHeroManagementProp
   const [rawMethodsInput, setRawMethodsInput] = useState("");
   const [rawSourceUrlsInput, setRawSourceUrlsInput] = useState("");
 
-  // Verificação de Autorização RBAC
-  const canManageHeroes = !session || canUserAccessPage(session.role, "herois");
-  const isSuperOrAdmin = !session || session.role === "ADM" || session.role === "SUPER";
+  // Verificação de Autorização RBAC estrita (Fail-closed)
+  const canManageHeroes = Boolean(session && canUserAccessPage(session.role, "herois"));
+  const isSuperOrAdmin = Boolean(session && (session.role === "ADM" || session.role === "SUPER"));
 
   // Carrega lista assíncrona do Supabase se disponível
   useEffect(() => {
@@ -672,7 +674,8 @@ export default function AdminHeroManagement({ session }: AdminHeroManagementProp
                 { id: "combate", label: "2. Perfil de Combate" },
                 { id: "desbloqueio", label: "3. Desbloqueio & Servidor" },
                 { id: "habilidades", label: "4. Habilidades & Estrelas" },
-                { id: "calculadoras", label: "5. Links & Calculadoras" },
+                { id: "sinergias", label: "5. Sinergias & Relações" },
+                { id: "calculadoras", label: "6. Links & Calculadoras" },
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -1040,12 +1043,24 @@ export default function AdminHeroManagement({ session }: AdminHeroManagementProp
               {modalTab === "habilidades" && (
                 <div className="space-y-6">
                   {editingHero.skills.map((skill, sIdx) => (
-                    <div key={skill.id || sIdx} className="p-5 rounded-2xl bg-slate-900/70 border border-slate-800 space-y-4">
+                    <div key={skill.id || sIdx} className="p-5 rounded-2xl bg-slate-900/70 border border-slate-800 space-y-4 relative">
+                      <button
+                        onClick={() => {
+                          setEditingHero(prev => {
+                            if (!prev) return null;
+                            const newSkills = [...prev.skills];
+                            newSkills.splice(sIdx, 1);
+                            return { ...prev, skills: newSkills };
+                          });
+                        }}
+                        className="absolute top-4 right-4 text-slate-500 hover:text-red-400 font-bold"
+                      >
+                        🗑️
+                      </button>
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-black uppercase text-[#00ff88]">
-                          {skill.type} — {skill.name}
+                          {skill.type} — {skill.name || `Habilidade ${sIdx + 1}`}
                         </span>
-                        <span className="text-xs text-slate-400">{skill.cooldown || "Sem CD"}</span>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -1085,6 +1100,8 @@ export default function AdminHeroManagement({ session }: AdminHeroManagementProp
                             <option value="Ultimate">Ultimate (Suprema)</option>
                             <option value="Ativa">Ativa (Tática)</option>
                             <option value="Passiva">Passiva</option>
+                            <option value="Ataque Automático">Ataque Automático (Básico)</option>
+                            <option value="Habilidade de Suporte">Habilidade de Suporte (Auxiliar)</option>
                           </select>
                         </div>
 
@@ -1125,12 +1142,213 @@ export default function AdminHeroManagement({ session }: AdminHeroManagementProp
                           className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-xs text-white focus:outline-none focus:border-[#00ff88]"
                         />
                       </div>
+
+                      {/* PROGRESSÃO DE ESTRELAS */}
+                      <div className="mt-4 pt-4 border-t border-slate-700/50">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-[10px] font-bold text-amber-400 uppercase">Marcos de Estrela (Progression)</span>
+                          {(!skill.progression || skill.progression.length < 10) && (
+                            <button
+                              onClick={() => {
+                                setEditingHero((prev) => {
+                                  if (!prev) return null;
+                                  const newSkills = [...prev.skills];
+                                  const currentProgression = newSkills[sIdx].progression || [];
+                                  if (currentProgression.length >= 10) return prev;
+                                  newSkills[sIdx] = { 
+                                    ...newSkills[sIdx], 
+                                    progression: [...currentProgression, { starLevel: "2⭐", starsRequired: 2, title: "", description: "" }] 
+                                  };
+                                  return { ...prev, skills: newSkills };
+                                });
+                              }}
+                              className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/50 px-2 py-1 rounded hover:bg-amber-500/30 transition-colors"
+                            >
+                              + Adicionar Efeito
+                            </button>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          {skill.progression?.map((prog, pIdx) => (
+                            <div key={pIdx} className="flex gap-2 items-start bg-slate-950/50 p-2 rounded-lg border border-slate-700">
+                              <div className="w-24 flex-shrink-0">
+                                <select
+                                  value={prog.starsRequired}
+                                  onChange={(e) => {
+                                    const val = parseInt(e.target.value, 10);
+                                    setEditingHero(prev => {
+                                      if (!prev) return null;
+                                      const newSkills = [...prev.skills];
+                                      const newProg = [...(newSkills[sIdx].progression || [])];
+                                      newProg[pIdx] = { ...newProg[pIdx], starsRequired: val, starLevel: formatStarLabel(val) };
+                                      newSkills[sIdx] = { ...newSkills[sIdx], progression: newProg };
+                                      return { ...prev, skills: newSkills };
+                                    });
+                                  }}
+                                  className="w-full px-2 py-1.5 bg-slate-900 border border-slate-700 rounded text-[10px] text-white focus:outline-none focus:border-amber-500"
+                                >
+                                  {getAvailableStarOptions().map(opt => (
+                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div className="flex-1 space-y-1">
+                                <input
+                                  type="text"
+                                  value={prog.title || ""}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setEditingHero(prev => {
+                                      if (!prev) return null;
+                                      const newSkills = [...prev.skills];
+                                      const newProg = [...(newSkills[sIdx].progression || [])];
+                                      newProg[pIdx] = { ...newProg[pIdx], title: val };
+                                      newSkills[sIdx] = { ...newSkills[sIdx], progression: newProg };
+                                      return { ...prev, skills: newSkills };
+                                    });
+                                  }}
+                                  placeholder="Título do efeito..."
+                                  className="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded text-[10px] text-white focus:outline-none focus:border-amber-500"
+                                />
+                                <input
+                                  type="text"
+                                  value={prog.description}
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setEditingHero(prev => {
+                                      if (!prev) return null;
+                                      const newSkills = [...prev.skills];
+                                      const newProg = [...(newSkills[sIdx].progression || [])];
+                                      newProg[pIdx] = { ...newProg[pIdx], description: val };
+                                      newSkills[sIdx] = { ...newSkills[sIdx], progression: newProg };
+                                      return { ...prev, skills: newSkills };
+                                    });
+                                  }}
+                                  placeholder="Descrição do aprimoramento..."
+                                  className="w-full px-2 py-1 bg-slate-900 border border-slate-700 rounded text-[10px] text-white focus:outline-none focus:border-amber-500"
+                                />
+                              </div>
+                              <button
+                                onClick={() => {
+                                  setEditingHero(prev => {
+                                    if (!prev) return null;
+                                    const newSkills = [...prev.skills];
+                                    const newProg = [...(newSkills[sIdx].progression || [])];
+                                    newProg.splice(pIdx, 1);
+                                    newSkills[sIdx] = { ...newSkills[sIdx], progression: newProg };
+                                    return { ...prev, skills: newSkills };
+                                  });
+                                }}
+                                className="text-slate-500 hover:text-red-400 text-xs px-1"
+                              >
+                                🗑️
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                   ))}
+
+                  {editingHero.skills.length < 5 && (
+                    <button
+                      onClick={() => {
+                        setEditingHero(prev => {
+                          if (!prev) return null;
+                          const newSkills = [...prev.skills];
+                          newSkills.push({
+                            id: `${prev.id}-skill-${newSkills.length + 1}`,
+                            name: `Nova Habilidade`,
+                            type: "Ativa",
+                            description: "Nova habilidade",
+                            damageType: prev.damageType,
+                            progression: []
+                          });
+                          return { ...prev, skills: newSkills };
+                        });
+                      }}
+                      className="w-full py-3 border-2 border-dashed border-slate-700 rounded-xl text-xs font-bold text-slate-400 hover:text-[#00ff88] hover:border-[#00ff88] transition-colors"
+                    >
+                      + Adicionar Habilidade ({editingHero.skills.length}/5)
+                    </button>
+                  )}
                 </div>
               )}
 
-              {/* ABA 5: CALCULADORAS & FONTES */}
+              {/* ABA 5: SINERGIAS E RELAÇÕES */}
+              {modalTab === "sinergias" && (
+                <div className="space-y-6">
+                  <div>
+                    <h4 className="text-sm font-bold text-white mb-2">Alta Sinergia (Composição Favorável)</h4>
+                    <p className="text-xs text-slate-400 mb-4">Selecione os heróis que formam as melhores combinações com {editingHero.name}.</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-h-64 overflow-y-auto p-2 border border-slate-800 rounded-xl bg-slate-900/50">
+                      {heroes.filter(h => h.id !== editingHero.id).map(h => {
+                        const isSelected = editingHero.combatProfile.synergyWith?.includes(h.slug);
+                        return (
+                          <label key={`syn-${h.id}`} className={`flex items-center gap-3 p-2 rounded-lg border cursor-pointer transition-colors ${isSelected ? 'border-[#00ff88] bg-[#00ff88]/10' : 'border-slate-700 bg-slate-950 hover:border-slate-500'}`}>
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={(e) => {
+                                setEditingHero(prev => {
+                                  if (!prev) return null;
+                                  const list = prev.combatProfile.synergyWith || [];
+                                  const newList = e.target.checked ? [...list, h.slug] : list.filter(slug => slug !== h.slug);
+                                  return { ...prev, combatProfile: { ...prev.combatProfile, synergyWith: newList } };
+                                });
+                              }}
+                              className="hidden"
+                            />
+                            <div className="w-8 h-8 rounded bg-slate-800 flex-shrink-0 overflow-hidden">
+                              {h.avatarUrl ? <img src={h.avatarUrl} alt={h.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-xs">{h.name[0]}</div>}
+                            </div>
+                            <div className="text-[10px]">
+                              <div className="font-bold text-white truncate max-w-[80px]">{h.name}</div>
+                              <div className="text-slate-400">{h.faction}</div>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="text-sm font-bold text-white mb-2">Heróis que Anulam (Counters)</h4>
+                    <p className="text-xs text-slate-400 mb-4">Selecione os heróis que são efetivos contra {editingHero.name}.</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-h-64 overflow-y-auto p-2 border border-slate-800 rounded-xl bg-slate-900/50">
+                      {heroes.filter(h => h.id !== editingHero.id).map(h => {
+                        const isSelected = editingHero.combatProfile.counteredBy?.includes(h.slug);
+                        return (
+                          <label key={`ctr-${h.id}`} className={`flex items-center gap-3 p-2 rounded-lg border cursor-pointer transition-colors ${isSelected ? 'border-red-500 bg-red-500/10' : 'border-slate-700 bg-slate-950 hover:border-slate-500'}`}>
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={(e) => {
+                                setEditingHero(prev => {
+                                  if (!prev) return null;
+                                  const list = prev.combatProfile.counteredBy || [];
+                                  const newList = e.target.checked ? [...list, h.slug] : list.filter(slug => slug !== h.slug);
+                                  return { ...prev, combatProfile: { ...prev.combatProfile, counteredBy: newList } };
+                                });
+                              }}
+                              className="hidden"
+                            />
+                            <div className="w-8 h-8 rounded bg-slate-800 flex-shrink-0 overflow-hidden">
+                              {h.avatarUrl ? <img src={h.avatarUrl} alt={h.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-xs">{h.name[0]}</div>}
+                            </div>
+                            <div className="text-[10px]">
+                              <div className="font-bold text-white truncate max-w-[80px]">{h.name}</div>
+                              <div className="text-slate-400">{h.faction}</div>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ABA 6: CALCULADORAS & FONTES */}
               {modalTab === "calculadoras" && (
                 <div className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
